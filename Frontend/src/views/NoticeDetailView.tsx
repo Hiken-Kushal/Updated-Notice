@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { 
   ArrowLeft, 
   Calendar, 
@@ -16,9 +16,11 @@ import {
   FileText,
   FileSpreadsheet,
   Image as ImageIcon,
-  Check
+  Check,
+  Clock
 } from 'lucide-react';
 import type { Notice, Attachment } from '../types/notice';
+import { formatNoticeContentToHtml } from '../types/notice';
 import { AttachmentModal } from '../components/notices/AttachmentModal';
 
 interface NoticeDetailViewProps {
@@ -59,6 +61,31 @@ export const NoticeDetailView: React.FC<NoticeDetailViewProps> = ({
 
   const isWarning = notice.accentColor === 'warning' || notice.urgent;
 
+  const getCategoryBadgeClass = (category?: string) => {
+    switch (category) {
+      case 'Examination':
+      case 'Exam':
+        return 'bg-amber-100 text-amber-900 border-amber-300';
+      case 'Placement & Training':
+      case 'Placement':
+        return 'bg-teal-100 text-teal-900 border-teal-200';
+      case 'Academics':
+      case 'Academic':
+        return 'bg-slate-100 text-slate-800 border-slate-200';
+      case 'Events & Cultural':
+      case 'Events':
+        return 'bg-purple-100 text-purple-900 border-purple-200';
+      case 'Administration':
+      case 'Admin':
+      case 'Administrative':
+        return 'bg-blue-100 text-blue-900 border-blue-200';
+      default:
+        return 'bg-slate-100 text-slate-800 border-slate-200';
+    }
+  };
+
+  const formattedHtml = formatNoticeContentToHtml(notice.content, notice.summary);
+
   return (
     <>
       <div className="flex flex-col w-full max-w-[1200px] mx-auto px-3 sm:px-6 py-4 sm:py-6 gap-4 sm:gap-5">
@@ -89,18 +116,33 @@ export const NoticeDetailView: React.FC<NoticeDetailViewProps> = ({
                 isWarning ? 'border-l-[#f59e0b]' : 'border-l-[#003c84]'
               }`}
             >
-              <div className="flex items-center justify-between mb-3 relative z-10">
-                <span
-                  className={`px-2.5 py-1 rounded text-[10.5px] sm:text-[11px] font-bold uppercase tracking-wider ${
-                    isWarning ? 'bg-amber-100 text-amber-900' : 'bg-blue-100 text-[#00275a]'
-                  }`}
-                >
-                  {notice.category}
-                </span>
+              <div className="flex items-center justify-between mb-3 relative z-10 flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`px-2.5 py-1 rounded text-[10.5px] sm:text-[11px] font-bold uppercase tracking-wider border ${getCategoryBadgeClass(
+                      notice.category
+                    )}`}
+                  >
+                    {notice.category}
+                  </span>
+                  {notice.urgent && (
+                    <span className="text-[10px] bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded uppercase tracking-wider border border-red-200">
+                      Urgent
+                    </span>
+                  )}
+                </div>
 
-                <div className="flex items-center gap-1.5 text-[#5c6470] text-xs font-medium">
-                  <Calendar className="w-3.5 h-3.5 text-[#737782]" />
-                  <span>{notice.date}</span>
+                <div className="flex items-center gap-3 text-[#5c6470] text-xs font-medium">
+                  <span className="flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-[#737782]" />
+                    <span>{notice.date}</span>
+                  </span>
+                  {notice.time && (
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-[#737782]" />
+                      <span>{notice.time}</span>
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -113,7 +155,7 @@ export const NoticeDetailView: React.FC<NoticeDetailViewProps> = ({
                 <div className="flex items-center gap-1.5">
                   <Building2 className="w-4 h-4 text-[#737782] shrink-0" />
                   <span>
-                    <strong>Target:</strong> {notice.targetAudience}
+                    <strong>Target:</strong> {notice.targetAudience || 'All Students'}
                   </span>
                 </div>
 
@@ -122,7 +164,7 @@ export const NoticeDetailView: React.FC<NoticeDetailViewProps> = ({
                 <div className="flex items-center gap-1.5">
                   <User className="w-4 h-4 text-[#737782] shrink-0" />
                   <span>
-                    <strong>Issued by:</strong> {notice.issuedBy}
+                    <strong>Issued by:</strong> {notice.issuedBy || notice.department}
                   </span>
                 </div>
 
@@ -140,17 +182,19 @@ export const NoticeDetailView: React.FC<NoticeDetailViewProps> = ({
               </div>
             </div>
 
-            {/* Notice Body */}
+            {/* Notice Body: Formatted Rich Text / Markdown Rendering */}
             <div className="bg-white rounded-xl shadow-2xs border border-[#e2e6ec] p-4 sm:p-7 flex flex-col gap-4 text-sm sm:text-base text-[#1c1b1b] leading-relaxed">
               {notice.fullBody?.salutation && (
                 <p className="font-semibold text-[#00275a]">{notice.fullBody.salutation}</p>
               )}
 
-              <p className="text-[#334155] leading-relaxed">
-                {notice.fullBody?.introduction || notice.content}
-              </p>
+              {/* Formatted Content Container */}
+              <div
+                className="text-[#334155] leading-relaxed prose prose-sm sm:prose-base max-w-none [&_p]:mb-3.5 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-2 [&_li]:mb-1 [&_strong]:font-bold [&_strong]:text-[#1c1b1b] [&_em]:italic [&_u]:underline"
+                dangerouslySetInnerHTML={{ __html: formattedHtml }}
+              />
 
-              {/* Structured Sections */}
+              {/* Structured Sections (if present in mock notice object) */}
               {notice.fullBody?.sections?.map((sec, idx) => (
                 <div key={idx} className="mt-2">
                   <h3 className="text-base sm:text-lg font-bold text-[#003c84] mb-2.5">
@@ -269,7 +313,7 @@ export const NoticeDetailView: React.FC<NoticeDetailViewProps> = ({
                 }`}
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>{notice.acknowledged ? 'Acknowledged ✓' : 'Acknowledge Notice'}</span>
+                <span>{notice.acknowledged ? 'Acknowledged' : 'Acknowledge Notice'}</span>
               </button>
             </div>
           </div>
@@ -291,7 +335,7 @@ export const NoticeDetailView: React.FC<NoticeDetailViewProps> = ({
                     className="p-3 rounded-lg border border-[#e2e6ec] hover:border-[#003c84] hover:bg-[#f5f7fa] transition-all cursor-pointer group"
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] font-bold text-[#00696c] bg-[#75f6fb]/20 px-1.5 py-0.5 rounded uppercase">
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase border ${getCategoryBadgeClass(rel.category)}`}>
                         {rel.category}
                       </span>
                       <span className="text-[10px] text-[#5c6470]">{rel.date.split(',')[0]}</span>

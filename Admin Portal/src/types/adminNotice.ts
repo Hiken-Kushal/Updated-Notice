@@ -1,4 +1,11 @@
-export type NoticeStatus = 'Published' | 'Archived' | 'Draft';
+export type NoticeStatus = 'Published' | 'Archived';
+
+export type AdminNoticeCategory =
+  | 'Academics'
+  | 'Examination'
+  | 'Placement & Training'
+  | 'Events & Cultural'
+  | 'Administration';
 
 export interface AdminAttachment {
   name: string;
@@ -11,12 +18,13 @@ export interface AdminNotice {
   id: string;
   refNo: string;
   title: string;
-  category: 'Placement' | 'Exam' | 'Academic' | 'Event' | 'Admin' | 'General';
+  category: AdminNoticeCategory | string;
   status: NoticeStatus;
   summary: string;
+  content?: string;
   issuedBy: string;
   department: string;
-  departmentKey: 'tpo' | 'exam' | 'comp' | 'it' | 'admin' | 'all';
+  departmentKey: 'tpo' | 'exam' | 'comp' | 'it' | 'admin' | 'all' | string;
   date: string;
   time: string;
   targetAudience: string;
@@ -33,7 +41,7 @@ export interface AdminFilterState {
   search: string;
   category: string;
   department: string;
-  statusTab: 'all' | 'published' | 'draft' | 'action_required';
+  statusTab: 'all' | 'published' | 'action_required';
   dateFilter?: string;
   selectedDate?: string;
 }

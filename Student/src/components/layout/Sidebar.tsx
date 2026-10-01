@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { 
   BellRing, 
-  FileCheck,
-  Briefcase,
-  Megaphone,
-  X,
-  Mail,
-  CheckCircle2,
-  AlertCircle
+  FileCheck, 
+  Briefcase, 
+  GraduationCap, 
+  Sparkles, 
+  ShieldAlert, 
+  Mail, 
+  CheckCircle2, 
+  AlertCircle,
+  X 
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -15,58 +17,42 @@ interface SidebarProps {
   selectedCategory?: string;
   onSelectCategory: (category: string) => void;
   onNavigate: (view: string) => void;
-  isOpen: boolean;
-  onClose: () => void;
-  categoryCounts?: {
-    all: number;
-    exam: number;
-    placement: number;
-    general: number;
-  };
+  categoryCounts?: Record<string, number>;
   totalNoticesCount?: number;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   currentView,
-  selectedCategory = 'all',
+  selectedCategory,
   onSelectCategory,
   onNavigate,
-  isOpen,
-  onClose,
   categoryCounts,
-  totalNoticesCount = 13,
+  totalNoticesCount = 0,
+  isOpen = false,
+  onClose,
 }) => {
   const [email, setEmail] = useState('');
-  const [emailError, setEmailError] = useState('');
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [emailError, setEmailError] = useState('');
+
+  const handleCategoryClick = (categoryId: string) => {
+    onSelectCategory(categoryId);
+    onNavigate('notices');
+    if (onClose) onClose();
+  };
 
   const handleBrandClick = () => {
+    onSelectCategory('all');
     onNavigate('dashboard');
-    onClose();
-  };
-
-  const handleCategoryClick = (catId: string) => {
-    onSelectCategory(catId);
-    onClose();
-  };
-
-  const validateEmail = (val: string) => {
-    const trimmed = val.trim();
-    if (!trimmed) {
-      return 'Email address is required.';
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(trimmed)) {
-      return 'Please enter a valid email address.';
-    }
-    return '';
+    if (onClose) onClose();
   };
 
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
-    const error = validateEmail(email);
-    if (error) {
-      setEmailError(error);
+    if (!email || !email.includes('@') || !email.includes('.')) {
+      setEmailError('Please enter a valid email address.');
       return;
     }
     setEmailError('');
@@ -83,22 +69,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
       count: categoryCounts?.all ?? totalNoticesCount,
     },
     {
-      id: 'exam',
-      label: 'Exam Notices',
+      id: 'academics',
+      label: 'Academics',
+      icon: GraduationCap,
+      count: categoryCounts?.academics ?? 0,
+    },
+    {
+      id: 'examination',
+      label: 'Examination',
       icon: FileCheck,
-      count: categoryCounts?.exam ?? 0,
+      count: categoryCounts?.examination ?? 0,
     },
     {
       id: 'placement',
-      label: 'Placement Notices',
+      label: 'Placement & Training',
       icon: Briefcase,
       count: categoryCounts?.placement ?? 0,
     },
     {
-      id: 'general',
-      label: 'General Notices',
-      icon: Megaphone,
-      count: categoryCounts?.general ?? 0,
+      id: 'events',
+      label: 'Events & Cultural',
+      icon: Sparkles,
+      count: categoryCounts?.events ?? 0,
+    },
+    {
+      id: 'administration',
+      label: 'Administration',
+      icon: ShieldAlert,
+      count: categoryCounts?.administration ?? 0,
     },
   ];
 
@@ -157,13 +155,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             {navCategories.map((item) => {
               const IconComponent = item.icon;
-              const isActive = isNoticesView && selectedCategory === item.id;
+              const isActive = isNoticesView && (
+                item.id === 'all'
+                  ? selectedCategory === 'all' || !selectedCategory
+                  : selectedCategory?.toLowerCase() === item.id.toLowerCase() ||
+                    (item.id === 'examination' && selectedCategory?.toLowerCase() === 'exam') ||
+                    (item.id === 'placement' && (selectedCategory?.toLowerCase() === 'placement & training' || selectedCategory?.toLowerCase() === 'placement')) ||
+                    (item.id === 'events' && (selectedCategory?.toLowerCase() === 'events & cultural' || selectedCategory?.toLowerCase() === 'events')) ||
+                    (item.id === 'administration' && (selectedCategory?.toLowerCase() === 'admin' || selectedCategory?.toLowerCase() === 'administration'))
+              );
 
               return (
                 <button
                   key={item.id}
                   onClick={() => handleCategoryClick(item.id)}
-                  className={`w-full flex items-center px-3.5 py-3 text-sm font-semibold transition-all rounded-sm text-left cursor-pointer ${
+                  className={`w-full flex items-center px-3.5 py-2.5 text-sm font-semibold transition-all rounded-sm text-left cursor-pointer ${
                     isActive
                       ? 'bg-[#003c84]/10 text-[#00275a] border-l-4 border-[#003c84] shadow-2xs'
                       : 'text-[#434751] hover:bg-[#f5f7fa] hover:text-[#1c1b1b] border-l-4 border-transparent'
@@ -172,7 +178,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <IconComponent 
                     className={`w-5 h-5 mr-3 shrink-0 ${isActive ? 'text-[#003c84]' : 'text-[#737782]'}`} 
                   />
-                  <span className="flex-1 truncate text-sm">{item.label}</span>
+                  <span className="flex-1 truncate text-xs sm:text-sm">{item.label}</span>
                   <span 
                     className={`text-[11px] font-bold px-2 py-0.5 rounded-full transition-colors ${
                       isActive 
@@ -187,8 +193,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             })}
           </div>
 
-
-          {/* Email Subscription Card (Compact & Secondary) */}
+          {/* Email Subscription Card */}
           <div className="mt-auto pt-4">
             <div className="p-3.5 bg-[#f8fafc] border border-[#e2e6ec] rounded-lg shadow-2xs">
               <div className="flex items-center gap-1.5 text-[#00275a] mb-1">
@@ -206,7 +211,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className="bg-emerald-50 border border-emerald-200 rounded-sm p-2.5 text-emerald-800 text-xs flex items-start gap-2 animate-in fade-in">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
                   <p className="text-[11px] text-emerald-800 leading-snug font-medium">
-                    ✓ You're subscribed! You'll receive new notices by email.
+                    You're subscribed! You'll receive new notices by email.
                   </p>
                 </div>
               ) : (

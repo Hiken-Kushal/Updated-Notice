@@ -1,6 +1,7 @@
-import React from 'react';
+﻿import React from 'react';
 import { Calendar, Paperclip, ArrowRight, Image as ImageIcon, CheckCircle2 } from 'lucide-react';
 import type { Notice } from '../../types/notice';
+import { stripHtmlAndMarkdown } from '../../types/notice';
 
 interface NoticeCardProps {
   notice: Notice;
@@ -11,17 +12,22 @@ export const NoticeCard: React.FC<NoticeCardProps> = ({ notice, onClick }) => {
   // Category styling based on design system
   const getCategoryBadge = (category: string) => {
     switch (category) {
+      case 'Academics':
       case 'Academic':
-        return 'bg-amber-100 text-amber-900 border-amber-200';
+        return 'bg-slate-100 text-slate-800 border-slate-200';
       case 'Examination':
+      case 'Exam':
         return 'bg-amber-100 text-amber-900 border-amber-300';
+      case 'Placement & Training':
       case 'Placement':
         return 'bg-teal-100 text-teal-900 border-teal-200';
+      case 'Events & Cultural':
       case 'Events':
-        return 'bg-blue-100 text-blue-900 border-blue-200';
+        return 'bg-purple-100 text-purple-900 border-purple-200';
+      case 'Administration':
       case 'Administrative':
       case 'Admin':
-        return 'bg-indigo-100 text-indigo-900 border-indigo-200';
+        return 'bg-blue-100 text-blue-900 border-blue-200';
       case 'Library':
         return 'bg-orange-100 text-orange-900 border-orange-200';
       case 'Sports':
@@ -33,19 +39,22 @@ export const NoticeCard: React.FC<NoticeCardProps> = ({ notice, onClick }) => {
 
   const getBorderColor = () => {
     if (notice.urgent || notice.accentColor === 'warning') return 'bg-[#f59e0b]';
-    if (notice.category === 'Placement' || notice.accentColor === 'primary') return 'bg-[#003c84]';
-    if (notice.category === 'Events') return 'bg-[#43ccd1]';
+    if (notice.category === 'Placement & Training' || notice.category === 'Placement' || notice.accentColor === 'primary') return 'bg-[#003c84]';
+    if (notice.category === 'Events & Cultural' || notice.category === 'Events') return 'bg-[#7c3aed]';
+    if (notice.category === 'Examination' || notice.category === 'Exam') return 'bg-[#b45309]';
+    if (notice.category === 'Administration' || notice.category === 'Admin') return 'bg-[#2563eb]';
     return 'bg-[#c3c6d2]';
   };
 
   const firstAttachment = notice.attachments && notice.attachments[0];
+  const summarySnippet = stripHtmlAndMarkdown(notice.summary || notice.content);
 
   return (
     <div
       onClick={onClick}
       className="group relative flex flex-col bg-white rounded-lg border border-[#e2e6ec] shadow-2xs hover:shadow-md hover:border-[#cbd5e1] transition-all duration-200 overflow-hidden cursor-pointer h-full"
     >
-      {/* 4px Left Border Accent */}
+      {/* Left Border Accent */}
       <div className={`absolute left-0 top-0 bottom-0 w-1 ${getBorderColor()}`} />
 
       <div className="p-4 sm:p-5 flex flex-col h-full pl-5">
@@ -78,7 +87,7 @@ export const NoticeCard: React.FC<NoticeCardProps> = ({ notice, onClick }) => {
 
         {/* Summary text */}
         <p className="text-xs sm:text-sm text-[#434751] mb-4 line-clamp-3 flex-grow leading-relaxed">
-          {notice.summary}
+          {summarySnippet}
         </p>
 
         {/* Bottom Card Footer */}
@@ -96,7 +105,7 @@ export const NoticeCard: React.FC<NoticeCardProps> = ({ notice, onClick }) => {
             </div>
           ) : (
             <div className="text-xs text-[#5c6470] font-medium truncate max-w-[180px]">
-              {notice.department}
+              {notice.issuedBy || notice.department}
             </div>
           )}
 

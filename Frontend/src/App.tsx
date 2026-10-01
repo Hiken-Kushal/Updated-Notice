@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+﻿import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { SplashScreen } from './components/layout/SplashScreen';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
@@ -11,21 +11,79 @@ import { mockNotices, mockActionItems } from './data/mockNotices';
 import { matchesNavCategory } from './types/notice';
 import type { Notice } from './types/notice';
 
+const NOTICES_STORAGE_KEY = 'icem_notices_v1';
+
+const getInitialNotices = (): Notice[] => {
+  try {
+    if (typeof window !== 'undefined') {
+      const raw = localStorage.getItem(NOTICES_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load notices from storage:', err);
+  }
+  return mockNotices;
+};
+
 export const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<string>('dashboard');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedNoticeId, setSelectedNoticeId] = useState<string>('notice-1');
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
-  const [notices, setNotices] = useState<Notice[]>(mockNotices);
+  const [notices, setNotices] = useState<Notice[]>(getInitialNotices);
   const [searchTerm, setSearchTerm] = useState<string>('');
 
-  // Calculate live counts for the 4 sidebar notice categories
+  // Sync notices across tabs and components
+  useEffect(() => {
+    let broadcastChannel: BroadcastChannel | null = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        broadcastChannel = new BroadcastChannel('icem_notices_channel');
+        broadcastChannel.onmessage = (event) => {
+          if (event.data && event.data.notices && Array.isArray(event.data.notices)) {
+            setNotices(event.data.notices);
+          }
+        };
+      }
+    } catch {
+      broadcastChannel = null;
+    }
+
+    const handleStorageChange = (e: StorageEvent | CustomEvent) => {
+      if (e instanceof CustomEvent && e.detail && Array.isArray(e.detail)) {
+        setNotices(e.detail);
+      } else {
+        const updated = getInitialNotices();
+        setNotices(updated);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange as EventListener);
+    window.addEventListener('icem-notices-update', handleStorageChange as EventListener);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange as EventListener);
+      window.removeEventListener('icem-notices-update', handleStorageChange as EventListener);
+      if (broadcastChannel) {
+        broadcastChannel.close();
+      }
+    };
+  }, []);
+
+  // Calculate live counts for the 5 categories
   const categoryCounts = useMemo(() => {
     return {
       all: notices.length,
-      exam: notices.filter((n) => matchesNavCategory(n.category, 'exam')).length,
+      academics: notices.filter((n) => matchesNavCategory(n.category, 'academics')).length,
+      examination: notices.filter((n) => matchesNavCategory(n.category, 'examination')).length,
       placement: notices.filter((n) => matchesNavCategory(n.category, 'placement')).length,
-      general: notices.filter((n) => matchesNavCategory(n.category, 'general')).length,
+      events: notices.filter((n) => matchesNavCategory(n.category, 'events')).length,
+      administration: notices.filter((n) => matchesNavCategory(n.category, 'administration')).length,
     };
   }, [notices]);
 
@@ -36,11 +94,8 @@ export const App: React.FC = () => {
       return { view: 'dashboard', category: 'all', noticeId: undefined };
     }
     if (rawHash.startsWith('notices/')) {
-      const cat = rawHash.replace('notices/', '').toLowerCase();
-      if (cat === 'exam' || cat === 'placement' || cat === 'general') {
-        return { view: 'notices', category: cat, noticeId: undefined };
-      }
-      return { view: 'dashboard', category: 'all', noticeId: undefined };
+      const cat = decodeURIComponent(rawHash.replace('notices/', '')).toLowerCase();
+      return { view: 'notices', category: cat, noticeId: undefined };
     }
     if (rawHash.startsWith('notice/')) {
       const id = rawHash.replace('notice/', '');
@@ -145,9 +200,6 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#f5f7fa] text-[#1c1b1b] flex flex-col selection:bg-[#003c84] selection:text-white overflow-x-hidden">
-      {/* Initial Loading / Splash Screen */}
-      <SplashScreen />
-
       {/* Sidebar Navigation */}
       <Sidebar
         currentView={currentView}
@@ -251,6 +303,9 @@ export const App: React.FC = () => {
           )}
         </div>
       </main>
+      
+      {/* Full Viewport Initial Loading Screen Overlay */}
+      <SplashScreen />
     </div>
   );
 };

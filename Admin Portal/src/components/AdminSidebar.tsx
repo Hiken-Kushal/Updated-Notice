@@ -1,28 +1,29 @@
-import React, { useState } from 'react';
+import React from 'react';
 
 interface AdminSidebarProps {
   currentTab?: string;
-  onNavigateTab?: (tab: string) => void;
+  selectedCategory?: string;
+  onNavigateTab?: (tab: string, category?: string) => void;
   isOpen: boolean;
   onClose: () => void;
   onSwitchToStudentPortal?: () => void;
-  totalNoticesCount?: number;
 }
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({
-  currentTab = 'manage-notices',
+  currentTab = 'dashboard',
+  selectedCategory = 'all',
   onNavigateTab,
   isOpen,
   onClose,
   onSwitchToStudentPortal,
-  totalNoticesCount = 24,
 }) => {
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-
-  const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', badge: totalNoticesCount },
-    { id: 'create-notice', label: 'Create Notice', icon: 'edit_note' },
-    { id: 'manage-banner', label: 'Dashboard Banner', icon: 'view_carousel' },
+  const categoryItems = [
+    { id: 'all', label: 'All Notices', icon: 'dashboard' },
+    { id: 'Academics', label: 'Academics', icon: 'school' },
+    { id: 'Examination', label: 'Examination', icon: 'fact_check' },
+    { id: 'Placement & Training', label: 'Placement & Training', icon: 'work' },
+    { id: 'Events & Cultural', label: 'Events & Cultural', icon: 'celebration' },
+    { id: 'Administration', label: 'Administration', icon: 'corporate_fare' },
   ];
 
   return (
@@ -41,9 +42,9 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
-        <div className="flex flex-col">
+        <div className="flex flex-col flex-1 overflow-y-auto">
           {/* Brand Header */}
-          <div className="h-16 px-4 flex items-center justify-between gap-3 bg-white border-b border-[#e2e6ec]/70">
+          <div className="h-16 px-4 flex items-center justify-between gap-3 bg-white border-b border-[#e2e6ec]/70 shrink-0">
             <div className="flex items-center gap-3">
               <img
                 src="/indira-logo.png"
@@ -71,23 +72,30 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
             </button>
           </div>
 
-          {/* Section Label */}
+          {/* Section Label: Categories Navigation */}
           <div className="px-4 pt-4 pb-1.5">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#5c6470]">
-              Navigation
+              Notice Categories
             </span>
           </div>
 
-          {/* Primary Navigation Items */}
+          {/* Category Navigation Items */}
           <nav className="flex flex-col gap-1 px-2">
-            {navItems.map((item) => {
-              const isDashboard = currentTab === 'dashboard' || currentTab === 'admin-dashboard' || currentTab === 'manage-notices';
-              const isActive = item.id === 'dashboard' ? isDashboard : currentTab === item.id;
+            {categoryItems.map((item) => {
+              const isDashboard = currentTab === 'dashboard' || currentTab === 'manage-notices';
+              const isActive = isDashboard && (
+                item.id === 'all'
+                  ? selectedCategory === 'all' || !selectedCategory
+                  : selectedCategory?.toLowerCase() === item.id.toLowerCase()
+              );
+
               return (
                 <button
                   key={item.id}
                   onClick={() => {
-                    if (onNavigateTab) onNavigateTab(item.id);
+                    if (onNavigateTab) {
+                      onNavigateTab('dashboard', item.id);
+                    }
                     onClose();
                   }}
                   className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded transition-all text-left cursor-pointer ${
@@ -102,90 +110,37 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                     </span>
                     <span className="text-sm font-medium">{item.label}</span>
                   </div>
-                  {item.badge !== undefined && (
-                    <span
-                      className={`text-[11px] font-bold px-2 py-0.5 rounded ${
-                        isActive
-                          ? 'bg-[#f0eded] text-[#00275a]'
-                          : 'bg-[#f0eded] text-[#5c6470]'
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
                 </button>
               );
             })}
           </nav>
         </div>
 
-        {/* Bottom Area: Profile / Account & System Status */}
-        <div className="p-3 bg-white border-t border-[#e2e6ec]/80 flex flex-col gap-2 relative">
-          {/* Profile Dropdown Popup */}
-          {profileMenuOpen && (
-            <div className="absolute bottom-full left-3 right-3 mb-2 bg-white shadow-xl rounded-lg py-2 flex flex-col z-50 border border-[#e2e6ec] animate-in fade-in slide-in-from-bottom-2 duration-150">
-              <div className="px-3.5 py-2 bg-[#f6f3f2] border-b border-[#e2e6ec]/60">
-                <span className="text-xs font-bold text-[#00275a] uppercase tracking-wider block">Admin Account</span>
-                <span className="text-xs text-[#5c6470] block truncate">admin.tpo@icem.ac.in</span>
-              </div>
-              <button
-                onClick={() => setProfileMenuOpen(false)}
-                className="px-3.5 py-2 text-[#434751] hover:bg-[#eae7e7]/70 hover:text-[#1c1b1b] flex items-center gap-2 text-xs text-left w-full transition-colors cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[16px]">account_circle</span>
-                <span>Profile &amp; Settings</span>
-              </button>
-              {onSwitchToStudentPortal && (
-                <button
-                  onClick={() => {
-                    setProfileMenuOpen(false);
-                    onSwitchToStudentPortal();
-                  }}
-                  className="px-3.5 py-2 text-[#00696c] hover:bg-[#75f6fb]/20 flex items-center gap-2 text-xs text-left w-full transition-colors font-medium border-t border-[#e2e6ec]/60 cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[16px]">school</span>
-                  <span>Student Portal View</span>
-                </button>
-              )}
-              <button
-                onClick={() => setProfileMenuOpen(false)}
-                className="px-3.5 py-2 text-[#ef4444] hover:bg-[#ffdad6] flex items-center gap-2 text-xs text-left w-full transition-colors border-t border-[#e2e6ec]/60 cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[16px]">logout</span>
-                <span>Logout</span>
-              </button>
-            </div>
-          )}
-
-          {/* Profile Card Button */}
-          <button
-            onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-            className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-[#f5f7fa] transition-colors text-left cursor-pointer border border-transparent hover:border-[#e2e6ec]"
-            aria-label="Admin Profile Menu"
-          >
+        {/* Bottom Area: Clean Admin Profile */}
+        <div className="p-3 bg-white border-t border-[#e2e6ec]/80 flex flex-col gap-2 shrink-0">
+          {/* Admin User Card */}
+          <div className="w-full flex items-center justify-between p-2 rounded-lg bg-[#f8fafc] border border-[#e2e6ec]/60">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-full bg-[#003c84] text-white flex items-center justify-center font-bold text-xs shrink-0 ring-1 ring-[#e2e6ec]">
-                SK
+                CA
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-xs font-bold text-[#1c1b1b] leading-tight truncate">
-                  Prof. S. Kulkarni
+                  College Admin
                 </span>
-                <span className="text-[10px] text-[#5c6470] truncate">Admin / TPO</span>
+                <span className="text-[10px] text-[#5c6470] truncate">ICEM Administration</span>
               </div>
             </div>
-            <span className="material-symbols-outlined text-[#737782] text-[18px] shrink-0">
-              {profileMenuOpen ? 'expand_less' : 'more_vert'}
-            </span>
-          </button>
-
-          {/* Portal Status Indicator */}
-          <div className="px-2.5 py-1.5 rounded bg-[#f6f3f2] flex items-center justify-between">
-            <span className="text-[10px] text-[#5c6470]">AY 2024-25 • Central Hub</span>
-            <span className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
-              <span className="text-[10px] font-semibold text-[#00696c] uppercase">Live</span>
-            </span>
+            {onSwitchToStudentPortal && (
+              <button
+                onClick={onSwitchToStudentPortal}
+                title="Switch to Student Portal"
+                className="p-1 text-[#00696c] hover:bg-[#75f6fb]/20 rounded cursor-pointer transition-colors"
+                aria-label="Student Portal"
+              >
+                <span className="material-symbols-outlined text-[18px]">school</span>
+              </button>
+            )}
           </div>
         </div>
       </aside>
