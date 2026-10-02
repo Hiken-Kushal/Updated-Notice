@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   GraduationCap,
   Trophy,
@@ -15,7 +15,6 @@ import {
   X
 } from 'lucide-react';
 import type { Notice } from '../../types/notice';
-import { matchesNavCategory } from '../../types/notice';
 
 export interface NoticeFeedTableProps {
   notices: Notice[];
@@ -23,6 +22,7 @@ export interface NoticeFeedTableProps {
   onViewAllNotices?: () => void;
   showHeader?: boolean;
   showCategoryFilters?: boolean;
+  activeCategory?: string;
   limit?: number;
 }
 
@@ -31,25 +31,19 @@ export const NoticeFeedTable: React.FC<NoticeFeedTableProps> = ({
   onSelectNotice,
   onViewAllNotices,
   showHeader = true,
-  showCategoryFilters = true,
+  activeCategory = 'All',
   limit,
 }) => {
-  const [activeCategory, setActiveCategory] = useState<string>('All');
   const [feedFilter, setFeedFilter] = useState<string>('');
-
-  const categories = [
-    'All',
-    'Academics',
-    'Examination',
-    'Placement & Training',
-    'Events & Cultural',
-    'Administration',
-  ];
 
   const filteredNotices = notices.filter((n) => {
     // Category filtering
-    if (showCategoryFilters && activeCategory !== 'All') {
-      if (!matchesNavCategory(n.category, activeCategory)) {
+    if (activeCategory !== 'All') {
+      if (activeCategory === 'Administrative') {
+        if (n.category !== 'Administrative' && n.category !== 'Admin') return false;
+      } else if (activeCategory === 'Events') {
+        if (n.category !== 'Events' && n.category !== 'Sports') return false;
+      } else if (n.category.toLowerCase() !== activeCategory.toLowerCase()) {
         return false;
       }
     }
@@ -58,10 +52,10 @@ export const NoticeFeedTable: React.FC<NoticeFeedTableProps> = ({
     if (showHeader && feedFilter.trim()) {
       const query = feedFilter.toLowerCase();
       const matchesTitle = n.title.toLowerCase().includes(query);
-      const matchesCategory = (n.category || '').toLowerCase().includes(query);
-      const matchesDept = (n.department || '').toLowerCase().includes(query);
-      const matchesIssuer = (n.issuedBy || '').toLowerCase().includes(query);
-      const matchesSummary = (n.summary || '').toLowerCase().includes(query);
+      const matchesCategory = n.category.toLowerCase().includes(query);
+      const matchesDept = n.department.toLowerCase().includes(query);
+      const matchesIssuer = n.issuedBy.toLowerCase().includes(query);
+      const matchesSummary = n.summary?.toLowerCase().includes(query);
       if (!matchesTitle && !matchesCategory && !matchesDept && !matchesIssuer && !matchesSummary) {
         return false;
       }
@@ -77,26 +71,21 @@ export const NoticeFeedTable: React.FC<NoticeFeedTableProps> = ({
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case 'Academics':
       case 'Academic':
         return <GraduationCap className="w-4 h-4 text-[#00696c]" />;
       case 'Examination':
-      case 'Exam':
         return <FileCheck className="w-4 h-4 text-[#b45309]" />;
-      case 'Placement & Training':
-      case 'Placement':
-        return <Briefcase className="w-4 h-4 text-[#00275a]" />;
-      case 'Events & Cultural':
-      case 'Events':
-        return <Sparkles className="w-4 h-4 text-[#7c3aed]" />;
-      case 'Administration':
-      case 'Admin':
-      case 'Administrative':
-        return <ShieldAlert className="w-4 h-4 text-[#4338ca]" />;
       case 'Sports':
         return <Trophy className="w-4 h-4 text-[#3b82f6]" />;
       case 'Library':
         return <BookOpen className="w-4 h-4 text-[#7a3008]" />;
+      case 'Placement':
+        return <Briefcase className="w-4 h-4 text-[#00275a]" />;
+      case 'Events':
+        return <Sparkles className="w-4 h-4 text-[#7c3aed]" />;
+      case 'Administrative':
+      case 'Admin':
+        return <ShieldAlert className="w-4 h-4 text-[#4338ca]" />;
       default:
         return <Megaphone className="w-4 h-4 text-[#737782]" />;
     }
@@ -137,27 +126,6 @@ export const NoticeFeedTable: React.FC<NoticeFeedTableProps> = ({
         </div>
       )}
 
-      {/* Level 2: Compact Category Filter Buttons */}
-      {showCategoryFilters && (
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 hide-scrollbar">
-          {categories.map((cat) => {
-            const isActive = activeCategory === cat;
-            return (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`px-3 py-1 text-xs font-medium rounded-sm whitespace-nowrap transition-colors cursor-pointer ${
-                  isActive
-                    ? 'bg-[#003c84] text-white font-semibold shadow-2xs'
-                    : 'bg-white text-[#434751] hover:bg-[#f5f7fa] hover:text-[#1c1b1b] border border-[#e2e6ec]'
-                }`}
-              >
-                {cat}
-              </button>
-            );
-          })}
-        </div>
-      )}
 
       {/* Level 3: Polished Notice List Table */}
       <div className="bg-white border border-[#e2e6ec] rounded-lg overflow-hidden shadow-2xs flex flex-col">
@@ -166,7 +134,7 @@ export const NoticeFeedTable: React.FC<NoticeFeedTableProps> = ({
             <tr className="bg-[#f8fafc] border-b border-[#e2e6ec] text-[10px] sm:text-[11px] text-[#5c6470] uppercase tracking-wider font-semibold">
               <th className="py-2 sm:py-2.5 px-1.5 sm:px-3 w-9 sm:w-12 text-center">Type</th>
               <th className="py-2 sm:py-2.5 px-2 sm:px-3 w-auto">Subject</th>
-              <th className="py-2 sm:py-2.5 px-3 w-36 lg:w-44 hidden md:table-cell">Issued By / Department</th>
+              <th className="py-2 sm:py-2.5 px-3 w-36 lg:w-44 hidden md:table-cell">Department / Unit</th>
               <th className="py-2 sm:py-2.5 px-2 sm:px-3 w-20 sm:w-28 text-right">Date</th>
             </tr>
           </thead>
@@ -183,39 +151,58 @@ export const NoticeFeedTable: React.FC<NoticeFeedTableProps> = ({
                 <tr
                   key={notice.id}
                   onClick={() => onSelectNotice(notice.id)}
-                  className="hover:bg-[#f5f7fa] cursor-pointer transition-colors group"
+                  className="hover:bg-[#f8fafc] transition-colors cursor-pointer group"
                 >
+                  {/* Type Column */}
                   <td className="py-2.5 sm:py-3 px-1.5 sm:px-3 text-center align-middle">
-                    <div className="w-7 h-7 mx-auto rounded-sm bg-[#f8fafc] border border-[#e2e6ec] flex items-center justify-center group-hover:bg-white transition-colors">
+                    <div className="w-6 h-6 sm:w-7 sm:h-7 rounded bg-[#f1f5f9] flex items-center justify-center mx-auto shrink-0">
                       {getCategoryIcon(notice.category)}
                     </div>
                   </td>
 
+                  {/* Subject Column: Clearly prominent bold title + secondary metadata */}
                   <td className="py-2.5 sm:py-3 px-2 sm:px-3 align-middle">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-medium text-[#1c1b1b] group-hover:text-[#003c84] transition-colors line-clamp-1">
+                      <span className="font-bold text-[13px] sm:text-sm text-[#1c1b1b] group-hover:text-[#003c84] transition-colors leading-snug line-clamp-2 sm:line-clamp-1">
                         {notice.title}
                       </span>
                       {notice.urgent && (
                         <span className="text-[9px] bg-red-100 text-red-700 font-bold px-1.5 py-0.2 rounded uppercase tracking-wider shrink-0">
-                          Urgent
+                          URGENT
                         </span>
                       )}
+                    </div>
+
+                    {/* Secondary metadata */}
+                    <div className="text-[10.5px] sm:text-[11px] text-[#5c6470] mt-1 flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                      <span className="font-semibold text-[9.5px] sm:text-[10px] text-[#00275a] bg-[#00275a]/8 px-1.5 py-0.5 rounded uppercase tracking-wide">
+                        {notice.category}
+                      </span>
+                      <span className="text-[#c3c6d2]">•</span>
+                      <span className="truncate max-w-[110px] xs:max-w-[160px] sm:max-w-xs">{notice.issuedBy}</span>
                       {notice.attachments && notice.attachments.length > 0 && (
-                        <Paperclip className="w-3 h-3 text-[#737782] shrink-0" />
+                        <>
+                          <span className="text-[#c3c6d2]">•</span>
+                          <span className="inline-flex items-center gap-0.5 text-[#00696c] font-medium bg-[#75f6fb]/20 px-1 py-0.2 rounded-2xs shrink-0">
+                            <Paperclip className="w-2.5 h-2.5" />
+                            <span>{notice.attachments.length} attached</span>
+                          </span>
+                        </>
                       )}
                     </div>
                   </td>
 
-                  <td className="py-2.5 sm:py-3 px-3 text-[#5c6470] hidden md:table-cell align-middle truncate font-medium">
-                    {notice.issuedBy || notice.department}
+                  {/* Department Column */}
+                  <td className="py-2.5 sm:py-3 px-3 hidden md:table-cell text-[#5c6470] font-medium truncate align-middle">
+                    {notice.department}
                   </td>
 
-                  <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-right text-[#5c6470] align-middle whitespace-nowrap">
-                    <span className="inline-flex items-center justify-end gap-1 font-medium">
-                      <span>{notice.date.split(',')[0]}</span>
-                      <ChevronRight className="w-3.5 h-3.5 text-[#737782] group-hover:text-[#003c84] group-hover:translate-x-0.5 transition-all" />
-                    </span>
+                  {/* Date Column */}
+                  <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-right text-[#5c6470] font-medium whitespace-nowrap align-middle">
+                    <div className="flex items-center justify-end gap-0.5 sm:gap-1">
+                      <span className="text-[10px] sm:text-[11px]">{notice.date.split(',')[0]}</span>
+                      <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#737782] group-hover:text-[#003c84] group-hover:translate-x-0.5 transition-transform shrink-0" />
+                    </div>
                   </td>
                 </tr>
               ))
@@ -223,14 +210,14 @@ export const NoticeFeedTable: React.FC<NoticeFeedTableProps> = ({
           </tbody>
         </table>
 
-        {/* Optional View All Footer */}
-        {onViewAllNotices && filteredNotices.length > (limit || 7) && (
-          <div className="p-2.5 bg-[#f8fafc] border-t border-[#e2e6ec] text-center">
+        {/* VIEW ALL NOTICES Action at bottom of Notice Feed */}
+        {onViewAllNotices && (
+          <div className="bg-[#f8fafc] border-t border-[#e2e6ec] px-4 py-2.5 flex items-center justify-center">
             <button
               onClick={onViewAllNotices}
-              className="text-xs font-semibold text-[#003c84] hover:text-[#00275a] inline-flex items-center gap-1 hover:underline cursor-pointer"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#003c84] hover:text-[#00275a] hover:underline uppercase tracking-wider transition-colors cursor-pointer"
             >
-              <span>View all {filteredNotices.length} notices</span>
+              <span>View All Notices</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>

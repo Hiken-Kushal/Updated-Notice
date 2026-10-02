@@ -1,8 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { RotateCw, CheckCircle2, Search, X } from 'lucide-react';
 import { NoticeFeedTable } from '../components/dashboard/NoticeFeedTable';
-import { RecentUpdatesWidget } from '../components/dashboard/RecentUpdatesWidget';
-import { FeaturedEvents } from '../components/dashboard/FeaturedEvents';
+import { NoticeCalendar } from '../components/dashboard/NoticeCalendar';
 import { matchesNavCategory } from '../types/notice';
 import type { Notice } from '../types/notice';
 
@@ -77,6 +76,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           title: 'General Notices',
           subtitle: 'Administrative guidelines, student welfare updates, statutory notices, and campus circulars.',
         };
+      case 'events':
+        return {
+          title: 'Events & Cultures',
+          subtitle: 'Discover upcoming college events, cultural activities and campus celebrations.',
+        };
       default:
         return {
           title: 'All Notices',
@@ -143,25 +147,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Main Content Grid: 12-column layout */}
       <div className="p-3 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-start">
-        {/* Left Column: Notices (8 columns on desktop) */}
-        <div className="lg:col-span-8 flex flex-col gap-5 min-w-0">
-          {/* Structured Notice Feed List with Horizontal Filters */}
+        {/* Left Column: Notices (7 columns on desktop) */}
+        <div className="lg:col-span-7 xl:col-span-7 flex flex-col gap-5 min-w-0">
+          {/* Structured Notice Feed List */}
           <NoticeFeedTable
             notices={displayNotices}
             onSelectNotice={onSelectNotice}
-            onViewAllNotices={() => onNavigateView('notices')}
+            onViewAllNotices={selectedCategory === 'all' ? () => onNavigateView('notices') : undefined}
           />
         </div>
 
-        {/* Right Column: Widgets (4 columns on desktop) */}
-        <div className="lg:col-span-4 flex flex-col gap-5 min-w-0">
-          {/* Top Quick Actions (Docs | Help) & Recent Updates */}
-          <RecentUpdatesWidget
+        {/* Right Column: Google Calendar-style Notice Calendar (5 columns on desktop) */}
+        <div className="lg:col-span-5 xl:col-span-5 flex flex-col gap-5 min-w-0">
+          <NoticeCalendar
+            notices={notices}
             onSelectNotice={onSelectNotice}
           />
-
-          {/* Featured Events Carousel Component */}
-          <FeaturedEvents />
         </div>
       </div>
     </div>

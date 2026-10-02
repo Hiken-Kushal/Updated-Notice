@@ -40,6 +40,11 @@ export const NoticesView: React.FC<NoticesViewProps> = ({
           title: 'General Notices',
           subtitle: 'Administrative guidelines, student welfare updates, statutory notices, and campus circulars.',
         };
+      case 'events':
+        return {
+          title: 'Events & Cultures',
+          subtitle: 'Discover upcoming college events, cultural activities and campus celebrations.',
+        };
       default:
         return {
           title: 'All Notices',

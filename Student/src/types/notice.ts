@@ -1,130 +1,37 @@
-﻿export type NoticeCategory =
-  | 'Academics'
+export type NoticeCategory =
   | 'Academic'
   | 'Examination'
   | 'Exam'
-  | 'Placement & Training'
   | 'Placement'
-  | 'Events & Cultural'
   | 'Events'
-  | 'Administration'
   | 'Administrative'
   | 'Admin'
   | 'General'
   | 'Sports'
-  | 'Library'
-  | string;
+  | 'Library';
 
-export type NavCategoryKey =
-  | 'all'
-  | 'academics'
-  | 'academic'
-  | 'examination'
-  | 'exam'
-  | 'placement'
-  | 'events'
-  | 'administration'
-  | 'admin'
-  | 'general'
-  | string;
+export type NavCategoryKey = 'all' | 'exam' | 'placement' | 'general' | 'events';
 
 export const matchesNavCategory = (noticeCategory: string, categoryKey: string): boolean => {
   if (!categoryKey || categoryKey === 'all') return true;
   const cat = (noticeCategory || '').toLowerCase().trim();
   const key = categoryKey.toLowerCase().trim();
 
-  if (key === 'academics' || key === 'academic') {
-    return cat === 'academics' || cat === 'academic';
-  }
   if (key === 'exam' || key === 'examination') {
     return cat === 'exam' || cat === 'examination';
   }
-  if (key === 'placement' || key === 'placement & training' || key === 'training & placement') {
-    return (
-      cat === 'placement' ||
-      cat === 'placement & training' ||
-      cat === 'training & placement'
-    );
+  if (key === 'placement') {
+    return cat === 'placement';
   }
-  if (key === 'events' || key === 'events & cultural' || key === 'cultural' || key === 'sports') {
-    return (
-      cat === 'events' ||
-      cat === 'events & cultural' ||
-      cat === 'cultural' ||
-      cat === 'sports'
-    );
-  }
-  if (key === 'admin' || key === 'administration' || key === 'administrative') {
-    return (
-      cat === 'admin' ||
-      cat === 'administration' ||
-      cat === 'administrative'
-    );
+  if (key === 'events' || key === 'culture' || key === 'cultural') {
+    return cat === 'events' || cat === 'sports' || cat === 'cultural';
   }
   if (key === 'general') {
-    return (
-      cat === 'general' ||
-      cat === 'administrative' ||
-      cat === 'admin' ||
-      cat === 'administration' ||
-      cat === 'academics' ||
-      cat === 'academic' ||
-      cat === 'events' ||
-      cat === 'sports' ||
-      cat === 'library'
-    );
+    return cat === 'general' || cat === 'administrative' || cat === 'admin' || cat === 'academic' || cat === 'library';
   }
   return cat === key;
 };
 
-/**
- * Strips HTML tags and markdown symbols for clean text snippet display in cards
- */
-export const stripHtmlAndMarkdown = (str?: string): string => {
-  if (!str) return '';
-  return str
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/\*([^*]+)\*/g, '$1')
-    .replace(/__([^_]+)__/g, '$1')
-    .replace(/_([^_]+)_/g, '$1')
-    .replace(/`([^`]+)`/g, '$1')
-    .replace(/\s+/g, ' ')
-    .trim();
-};
-
-/**
- * Sanitizes and formats rich text / markdown into safe HTML for display
- */
-export const formatNoticeContentToHtml = (content?: string, summary?: string): string => {
-  const raw = content || summary || '';
-  if (!raw) return '<p>No notice content provided.</p>';
-
-  // Check if string contains HTML tags
-  const hasHtml = /<[a-z][\s\S]*>/i.test(raw);
-
-  let html = raw;
-  if (!hasHtml) {
-    // Convert Markdown / plain text to HTML
-    html = raw
-      // Bold
-      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-      .replace(/__([^_]+)__/g, '<strong>$1</strong>')
-      // Italic
-      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-      .replace(/_([^_]+)_/g, '<em>$1</em>')
-      // Paragraphs & Line breaks
-      .split(/\n\s*\n/)
-      .map((para) => `<p class="mb-3">${para.replace(/\n/g, '<br/>')}</p>`)
-      .join('');
-  }
-
-  // Sanitize: strip script tags and dangerous event handlers
-  return html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
-    .replace(/javascript:/gi, '');
-};
 
 export interface Attachment {
   name: string;
@@ -158,7 +65,7 @@ export interface Notice {
   actionDeadline?: string;
   targetAudience: string;
   department: string;
-  departmentKey?: 'ce' | 'it' | 'mech' | 'civil' | 'all' | string;
+  departmentKey?: 'ce' | 'it' | 'mech' | 'civil' | 'all';
   issuedBy: string;
   attachments?: Attachment[];
   acknowledged?: boolean;
@@ -198,9 +105,13 @@ export interface FeaturedEvent {
   deadlineText: string;
   startDate?: string;
   endDate?: string;
+  time?: string;
   venue?: string;
   isFeatured?: boolean;
   status?: 'open' | 'closing-soon' | 'closed';
+  category?: 'Cultural Events' | 'College Events' | 'Festivals' | 'Competitions' | 'Workshops' | 'Student Activities' | string;
+  noticeId?: string;
+  longDescription?: string;
 }
 
 export interface ScheduleItem {

@@ -216,7 +216,7 @@ export const AdminBannerManager: React.FC<AdminBannerManagerProps> = ({
       )}
 
       {/* Page Header & Navigation Breadcrumb */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 sm:pt-3 border-b border-[#e2e6ec] pb-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-2 sm:pt-3 border-b border-[#e2e6ec] pb-5">
         <div className="flex items-start sm:items-center gap-3.5">
           <button
             type="button"
@@ -224,13 +224,13 @@ export const AdminBannerManager: React.FC<AdminBannerManagerProps> = ({
               if (onNavigateTab) onNavigateTab('dashboard');
               else window.location.hash = '#/dashboard';
             }}
-            className="p-2.5 bg-white text-[#5c6470] hover:text-[#00275a] hover:bg-[#f0f4fd] border border-[#e2e6ec] hover:border-[#00275a]/40 rounded-lg transition-all cursor-pointer flex items-center justify-center shrink-0 shadow-2xs mt-0.5 sm:mt-0"
+            className="p-2 sm:p-2.5 bg-white text-[#5c6470] hover:text-[#00275a] hover:bg-[#f0f4fd] border border-[#e2e6ec] hover:border-[#00275a]/40 rounded-lg transition-all cursor-pointer flex items-center justify-center shrink-0 shadow-2xs mt-0.5 sm:mt-0"
             title="Return to Notice Dashboard"
             aria-label="Return to Notice Dashboard"
           >
             <span className="material-symbols-outlined text-[20px]">arrow_back</span>
           </button>
-          <div className="flex flex-col">
+          <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-semibold text-[#5c6470] tracking-wide">
                 Institutional Management
@@ -241,16 +241,16 @@ export const AdminBannerManager: React.FC<AdminBannerManagerProps> = ({
                 Dashboard Banner
               </span>
             </div>
-            <h1 className="text-2xl sm:text-[28px] font-bold text-[#00275a] tracking-tight leading-tight mt-0.5">
+            <h1 className="text-xl sm:text-2xl md:text-[28px] font-bold text-[#00275a] tracking-tight leading-tight mt-0.5">
               Dashboard Banner
             </h1>
-            <p className="text-sm text-[#5c6470] leading-relaxed">
+            <p className="text-xs sm:text-sm text-[#5c6470] leading-relaxed">
               Manage, feature, and publish promotional cards, hackathon circulars, and event banners displayed on the Student Portal dashboard.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5 self-start sm:self-auto shrink-0">
+        <div className="flex items-center gap-2.5 flex-wrap shrink-0">
           <button
             type="button"
             onClick={handleResetDefaults}
@@ -266,7 +266,7 @@ export const AdminBannerManager: React.FC<AdminBannerManagerProps> = ({
               handleCancelEdit();
               formSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
             }}
-            className="px-4 py-2 bg-[#003c84] text-white text-xs sm:text-sm font-semibold hover:bg-[#00275a] transition-colors rounded-lg cursor-pointer flex items-center gap-1.5 shadow-2xs"
+            className="px-3.5 sm:px-4 py-2 bg-[#003c84] text-white text-xs sm:text-sm font-semibold hover:bg-[#00275a] transition-colors rounded-lg cursor-pointer flex items-center gap-1.5 shadow-2xs"
           >
             <span className="material-symbols-outlined text-[17px]">add_circle</span>
             <span>Create New Banner</span>
@@ -380,9 +380,9 @@ export const AdminBannerManager: React.FC<AdminBannerManagerProps> = ({
                     }`}
                 >
                   {/* Left: Thumbnail & Content Details */}
-                  <div className="flex items-start gap-4 flex-1 min-w-0">
+                  <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4 flex-1 min-w-0 w-full">
                     {/* Thumbnail */}
-                    <div className="w-24 h-16 sm:w-28 sm:h-18 rounded-lg overflow-hidden border border-[#e2e6ec] shrink-0 relative bg-slate-900 group">
+                    <div className="w-full sm:w-28 h-28 sm:h-18 rounded-lg overflow-hidden border border-[#e2e6ec] shrink-0 relative bg-slate-900 group">
                       <img
                         src={banner.image}
                         alt={banner.title}
@@ -399,7 +399,7 @@ export const AdminBannerManager: React.FC<AdminBannerManagerProps> = ({
                     </div>
 
                     {/* Metadata & Description */}
-                    <div className="flex flex-col min-w-0 flex-1">
+                    <div className="flex flex-col min-w-0 flex-1 w-full">
                       <div className="flex items-center gap-2 flex-wrap mb-1">
                         <span className="text-[10px] font-bold uppercase bg-[#d8e2ff] text-[#001a41] px-2 py-0.5 rounded">
                           {banner.tag || 'EVENT'}
@@ -462,7 +462,7 @@ export const AdminBannerManager: React.FC<AdminBannerManagerProps> = ({
                   </div>
 
                   {/* Right: Action Controls */}
-                  <div className="flex items-center gap-2 self-end md:self-center shrink-0">
+                  <div className="flex items-center gap-2 self-start sm:self-end md:self-center shrink-0 flex-wrap">
                     <button
                       type="button"
                       onClick={() => handleToggle(banner.id, isActive, banner.title)}

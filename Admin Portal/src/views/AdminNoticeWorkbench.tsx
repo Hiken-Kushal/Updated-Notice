@@ -23,6 +23,32 @@ const CATEGORIES: AdminNoticeCategory[] = [
   'Administration',
 ];
 
+const ISSUING_AUTHORITIES = [
+  'Training & Placement Officer',
+  'Controller of Examinations',
+  'Dean Academics',
+  'Registrar Office',
+  'Head of Industry Relations',
+  'Cultural Committee Head',
+  'Chief Librarian',
+  'Director of Physical Education',
+  'Principal Office',
+  'College Admin',
+];
+
+const TARGET_AUDIENCES = [
+  'All Enrolled Students',
+  'All Engineering Students',
+  'BE Final Yr (All Branches)',
+  'TE & BE Students',
+  'SE & TE Students',
+  'FE, SE, TE, BE Students',
+  'TE (Comp, IT)',
+  'All Branch Students',
+  'Faculty & Students',
+  'All Students & Staff',
+];
+
 const normalizeNoticeDateToKey = (dateStr: string): string => {
   if (!dateStr) return '';
   const d = new Date(dateStr);
@@ -43,6 +69,54 @@ const formatDateForDisplay = (dateKey: string): string => {
     day: 'numeric',
     year: 'numeric',
   });
+};
+
+/**
+ * Parses deadline string (e.g. "Oct 26, 05:00 PM" or "Oct 28, 2024 · 05:00 PM" or ISO) into date (YYYY-MM-DD) and time (HH:mm)
+ */
+const parseDeadlineToDateAndTime = (deadlineStr?: string): { date: string; time: string } => {
+  if (!deadlineStr || !deadlineStr.trim()) {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    return { date: `${y}-${m}-${d}`, time: '17:00' };
+  }
+
+  let timeStr = '17:00';
+  const timeMatch = deadlineStr.match(/(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)/);
+  if (timeMatch) {
+    timeStr = time12To24(timeMatch[1]);
+  }
+
+  const dateCandidate = deadlineStr
+    .replace(/·/g, '')
+    .replace(/(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)/g, '')
+    .trim();
+
+  let dateIso = '';
+  if (dateCandidate) {
+    dateIso = displayDateToIso(dateCandidate);
+  }
+  if (!dateIso || dateIso === 'NaN-NaN-NaN' || dateIso.includes('NaN')) {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    dateIso = `${y}-${m}-${d}`;
+  }
+
+  return { date: dateIso, time: timeStr };
+};
+
+/**
+ * Formats ISO date (YYYY-MM-DD) and 24h time (HH:mm) into display deadline (e.g. "Oct 26, 2024 · 05:00 PM")
+ */
+const formatDeadlineToDisplay = (dateIso: string, time24: string): string => {
+  if (!dateIso) return '';
+  const displayDate = isoToDisplayDate(dateIso);
+  const displayTime = time24To12(time24);
+  return `${displayDate} · ${displayTime}`;
 };
 
 interface AdminNoticeWorkbenchProps {
@@ -66,7 +140,7 @@ const getInitialCreateNoticeState = (): Partial<AdminNotice> => {
     departmentKey: 'admin',
     summary: '',
     content: '',
-    issuedBy: '',
+    issuedBy: 'Training & Placement Officer',
     targetAudience: 'All Enrolled Students',
     academicYear: 'AY 2024-25',
     date: displayDate,
@@ -88,13 +162,20 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
   onStatsChange,
 }) => {
   const [notices, setNotices] = useState<AdminNotice[]>(() => getStoredNotices());
-  const [selectedNoticeId, setSelectedNoticeId] = useState<string>('');
+  const [selectedNoticeId, setSelectedNoticeId] = useState<string>(() => {
+    const initial = getStoredNotices();
+    return initial[0]?.id || '';
+  });
   const [itemsPerPage, setItemsPerPage] = useState<number>(5);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Dedicated Create Notice Form state
   const [createNoticeData, setCreateNoticeData] = useState<Partial<AdminNotice>>(getInitialCreateNoticeState);
+
+  // Separate Action Deadline date & time state
+  const [actionDeadlineDate, setActionDeadlineDate] = useState<string>(() => parseDeadlineToDateAndTime('').date);
+  const [actionDeadlineTime, setActionDeadlineTime] = useState<string>(() => parseDeadlineToDateAndTime('').time);
 
   // Edit state for existing notice
   const [editingNoticeId, setEditingNoticeId] = useState<string | null>(null);
@@ -156,13 +237,6 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
       onStatsChange(total, published);
     }
   }, [notices, onStatsChange]);
-
-  // Set default selected notice if none selected
-  useEffect(() => {
-    if (!selectedNoticeId && notices.length > 0) {
-      setSelectedNoticeId(notices[0].id);
-    }
-  }, [notices, selectedNoticeId]);
 
   // Sync calendar view month/year when selectedDate changes
   useEffect(() => {
@@ -268,7 +342,6 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
         const catFilter = filters.category.toLowerCase().trim();
         const noticeCat = (notice.category || '').toLowerCase().trim();
         
-        // Match exact or standard synonyms
         if (catFilter === 'academics' || catFilter === 'academic') {
           if (noticeCat !== 'academics' && noticeCat !== 'academic') return false;
         } else if (catFilter === 'examination' || catFilter === 'exam') {
@@ -296,10 +369,27 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
     });
   }, [notices, filters]);
 
-  // Selected notice object
+  // Single source of truth for the currently selected notice ID
+  // Validates that selectedNoticeId belongs to current filtered list, otherwise defaults to first filtered notice
+  const currentSelectedNoticeId = useMemo(() => {
+    if (filteredNotices.length === 0) return '';
+    const exists = filteredNotices.some((n) => n.id === selectedNoticeId);
+    if (exists) return selectedNoticeId;
+    return filteredNotices[0].id;
+  }, [filteredNotices, selectedNoticeId]);
+
+  // Keep selectedNoticeId state synchronized with current selection
+  useEffect(() => {
+    if (currentSelectedNoticeId && currentSelectedNoticeId !== selectedNoticeId) {
+      setSelectedNoticeId(currentSelectedNoticeId);
+    }
+  }, [currentSelectedNoticeId, selectedNoticeId]);
+
+  // Selected notice object (strictly synchronized with current selected notice ID)
   const activeNotice = useMemo(() => {
-    return notices.find((n) => n.id === selectedNoticeId) || filteredNotices[0] || notices[0];
-  }, [notices, selectedNoticeId, filteredNotices]);
+    if (!currentSelectedNoticeId) return null;
+    return notices.find((n) => n.id === currentSelectedNoticeId) || null;
+  }, [notices, currentSelectedNoticeId]);
 
   // Pagination calculation
   const totalPages = Math.max(1, Math.ceil(filteredNotices.length / itemsPerPage));
@@ -342,6 +432,10 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
   // Action: Open Edit Notice in full page form
   const handleOpenEdit = (notice: AdminNotice) => {
     setEditingNoticeId(notice.id);
+    const parsedDeadline = parseDeadlineToDateAndTime(notice.actionDeadline);
+    setActionDeadlineDate(parsedDeadline.date);
+    setActionDeadlineTime(parsedDeadline.time);
+
     setCreateNoticeData({
       id: notice.id,
       refNo: notice.refNo,
@@ -350,12 +444,12 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
       status: 'Published',
       summary: notice.summary,
       content: notice.content || notice.summary,
-      issuedBy: notice.issuedBy,
+      issuedBy: notice.issuedBy || 'Training & Placement Officer',
       department: notice.department,
       departmentKey: notice.departmentKey,
       date: notice.date,
       time: notice.time,
-      targetAudience: notice.targetAudience,
+      targetAudience: notice.targetAudience || 'All Enrolled Students',
       academicYear: notice.academicYear || 'AY 2024-25',
       isImportant: notice.isImportant || false,
       isUrgent: notice.isUrgent || false,
@@ -364,6 +458,7 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
       actionDescription: notice.actionDescription || '',
       attachments: notice.attachments ? [...notice.attachments] : [],
     });
+
     if (onNavigateTab) {
       onNavigateTab('create-notice');
     } else {
@@ -383,7 +478,12 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
     const noticeContent = createNoticeData.content?.trim() || createNoticeData.summary?.trim() || '';
     const noticeDate = createNoticeData.date || isoToDisplayDate();
     const noticeTime = createNoticeData.time || new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    const noticeAuthority = createNoticeData.issuedBy?.trim() || 'College Admin';
+    const noticeAuthority = createNoticeData.issuedBy?.trim() || 'Training & Placement Officer';
+    const noticeAudience = createNoticeData.targetAudience?.trim() || 'All Enrolled Students';
+
+    const finalDeadline = createNoticeData.actionRequired
+      ? (actionDeadlineDate ? formatDeadlineToDisplay(actionDeadlineDate, actionDeadlineTime) : createNoticeData.actionDeadline?.trim())
+      : undefined;
 
     if (editingNoticeId) {
       // Update existing notice
@@ -401,12 +501,12 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
             departmentKey: createNoticeData.departmentKey || n.departmentKey || 'admin',
             date: noticeDate,
             time: noticeTime,
-            targetAudience: createNoticeData.targetAudience?.trim() || n.targetAudience,
+            targetAudience: noticeAudience,
             academicYear: createNoticeData.academicYear || n.academicYear || 'AY 2024-25',
             isImportant: createNoticeData.isImportant !== undefined ? createNoticeData.isImportant : n.isImportant,
             isUrgent: createNoticeData.isUrgent !== undefined ? createNoticeData.isUrgent : n.isUrgent,
             actionRequired: createNoticeData.actionRequired !== undefined ? createNoticeData.actionRequired : n.actionRequired,
-            actionDeadline: createNoticeData.actionDeadline?.trim() || undefined,
+            actionDeadline: finalDeadline,
             actionDescription: createNoticeData.actionDescription?.trim() || undefined,
             attachments: createNoticeData.attachments ? [...createNoticeData.attachments] : [],
           };
@@ -419,6 +519,9 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
       setSelectedNoticeId(editingNoticeId);
       setEditingNoticeId(null);
       setCreateNoticeData(getInitialCreateNoticeState());
+      const resetDeadline = parseDeadlineToDateAndTime('');
+      setActionDeadlineDate(resetDeadline.date);
+      setActionDeadlineTime(resetDeadline.time);
       showToast('Notice updated and published successfully.');
     } else {
       // Create new notice
@@ -435,12 +538,12 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
         departmentKey: createNoticeData.departmentKey || 'admin',
         date: noticeDate,
         time: noticeTime,
-        targetAudience: createNoticeData.targetAudience?.trim() || 'All Enrolled Students',
+        targetAudience: noticeAudience,
         academicYear: createNoticeData.academicYear || 'AY 2024-25',
         isImportant: createNoticeData.isImportant || false,
         isUrgent: createNoticeData.isUrgent || false,
         actionRequired: createNoticeData.actionRequired || false,
-        actionDeadline: createNoticeData.actionDeadline?.trim() || undefined,
+        actionDeadline: finalDeadline,
         actionDescription: createNoticeData.actionDescription?.trim() || undefined,
         attachments: createNoticeData.attachments || [],
       };
@@ -450,6 +553,9 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
       saveStoredNotices(updated);
       setSelectedNoticeId(newNotice.id);
       setCreateNoticeData(getInitialCreateNoticeState());
+      const resetDeadline = parseDeadlineToDateAndTime('');
+      setActionDeadlineDate(resetDeadline.date);
+      setActionDeadlineTime(resetDeadline.time);
       showToast('Notice published successfully.');
     }
 
@@ -463,6 +569,9 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
   const handleCancelCreate = () => {
     setEditingNoticeId(null);
     setCreateNoticeData(getInitialCreateNoticeState());
+    const resetDeadline = parseDeadlineToDateAndTime('');
+    setActionDeadlineDate(resetDeadline.date);
+    setActionDeadlineTime(resetDeadline.time);
     if (onNavigateTab) {
       onNavigateTab('dashboard');
     } else {
@@ -569,21 +678,21 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
 
       {currentTab === 'create-notice' ? (
         /* ========================================================================= */
-        /* CREATE / EDIT NOTICE VIEW (Focused, No Live Preview, No Drafts)           */
+        /* CREATE / EDIT NOTICE VIEW                                                */
         /* ========================================================================= */
-        <div className="w-full flex flex-col gap-6 max-w-5xl mx-auto">
+        <div className="w-full flex flex-col gap-5 sm:gap-6 max-w-5xl mx-auto">
           {/* Header */}
           <div className="flex items-start sm:items-center gap-3.5 pt-2 border-b border-[#e2e6ec] pb-4">
             <button
               type="button"
               onClick={handleCancelCreate}
-              className="p-2.5 bg-white text-[#5c6470] hover:text-[#00275a] hover:bg-[#f0f4fd] border border-[#e2e6ec] hover:border-[#00275a]/40 rounded-lg transition-all cursor-pointer flex items-center justify-center shrink-0 shadow-2xs"
+              className="p-2 sm:p-2.5 bg-white text-[#5c6470] hover:text-[#00275a] hover:bg-[#f0f4fd] border border-[#e2e6ec] hover:border-[#00275a]/40 rounded-lg transition-all cursor-pointer flex items-center justify-center shrink-0 shadow-2xs mt-0.5 sm:mt-0"
               title="Return to Notice Dashboard"
               aria-label="Return to Notice Dashboard"
             >
               <span className="material-symbols-outlined text-[20px]">arrow_back</span>
             </button>
-            <div className="flex flex-col">
+            <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-semibold text-[#5c6470]">Notice Management</span>
                 <span className="text-xs text-[#737782]">/</span>
@@ -591,10 +700,10 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
                   {editingNoticeId ? 'Edit Notice' : 'Create Notice'}
                 </span>
               </div>
-              <h1 className="text-2xl font-bold text-[#00275a] tracking-tight leading-tight mt-0.5">
+              <h1 className="text-xl sm:text-2xl font-bold text-[#00275a] tracking-tight leading-tight mt-0.5 truncate">
                 {editingNoticeId ? 'Edit Notice' : 'Create Notice'}
               </h1>
-              <p className="text-xs sm:text-sm text-[#5c6470]">
+              <p className="text-xs sm:text-sm text-[#5c6470] leading-relaxed">
                 {editingNoticeId
                   ? 'Update circular details, schedule, attachments, and student requirements.'
                   : 'Compose and publish official announcements for students and faculty.'}
@@ -605,7 +714,7 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
           {/* Create/Edit Form */}
           <form onSubmit={handleSaveCreate} className="flex flex-col gap-5">
             {/* Card 1: Core Information */}
-            <div className="bg-white rounded-xl border border-[#e2e6ec] p-5 sm:p-6 shadow-xs flex flex-col gap-4">
+            <div className="bg-white rounded-xl border border-[#e2e6ec] p-4 sm:p-6 shadow-xs flex flex-col gap-4">
               <div className="flex items-center gap-2.5 pb-3 border-b border-[#e2e6ec]">
                 <div className="w-8 h-8 rounded-lg bg-[#003c84]/10 text-[#003c84] flex items-center justify-center shrink-0">
                   <span className="material-symbols-outlined text-[20px]">edit_note</span>
@@ -663,33 +772,57 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
                   </div>
                 </div>
 
-                {/* Issuing Authority */}
+                {/* Issuing Authority (Dropdown) */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold uppercase tracking-wider text-[#434751]">
                     Issuing Authority <span className="text-[#ef4444]">*</span>
                   </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Training & Placement Officer"
-                    value={createNoticeData.issuedBy || ''}
-                    onChange={(e) => setCreateNoticeData((prev) => ({ ...prev, issuedBy: e.target.value }))}
-                    className="w-full px-3.5 py-2.5 bg-white text-[#1c1b1b] text-sm placeholder:text-[#737782] border border-[#e2e6ec] rounded-lg focus:border-[#003c84] focus:ring-1 focus:ring-[#003c84] focus:outline-none transition-colors"
-                  />
+                  <div className="relative">
+                    <select
+                      required
+                      value={createNoticeData.issuedBy || 'Training & Placement Officer'}
+                      onChange={(e) => setCreateNoticeData((prev) => ({ ...prev, issuedBy: e.target.value }))}
+                      className="w-full px-3.5 py-2.5 bg-white text-[#1c1b1b] text-sm border border-[#e2e6ec] rounded-lg focus:border-[#003c84] focus:ring-1 focus:ring-[#003c84] focus:outline-none appearance-none cursor-pointer pr-8"
+                    >
+                      {createNoticeData.issuedBy && !ISSUING_AUTHORITIES.includes(createNoticeData.issuedBy) && (
+                        <option value={createNoticeData.issuedBy}>{createNoticeData.issuedBy}</option>
+                      )}
+                      {ISSUING_AUTHORITIES.map((auth) => (
+                        <option key={auth} value={auth}>
+                          {auth}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-[#737782] text-[18px] pointer-events-none">
+                      expand_more
+                    </span>
+                  </div>
                 </div>
 
-                {/* Target Audience */}
+                {/* Target Audience (Dropdown) */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold uppercase tracking-wider text-[#434751]">
                     Target Audience
                   </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. All Final Year Students"
-                    value={createNoticeData.targetAudience || ''}
-                    onChange={(e) => setCreateNoticeData((prev) => ({ ...prev, targetAudience: e.target.value }))}
-                    className="w-full px-3.5 py-2.5 bg-white text-[#1c1b1b] text-sm placeholder:text-[#737782] border border-[#e2e6ec] rounded-lg focus:border-[#003c84] focus:ring-1 focus:ring-[#003c84] focus:outline-none transition-colors"
-                  />
+                  <div className="relative">
+                    <select
+                      value={createNoticeData.targetAudience || 'All Enrolled Students'}
+                      onChange={(e) => setCreateNoticeData((prev) => ({ ...prev, targetAudience: e.target.value }))}
+                      className="w-full px-3.5 py-2.5 bg-white text-[#1c1b1b] text-sm border border-[#e2e6ec] rounded-lg focus:border-[#003c84] focus:ring-1 focus:ring-[#003c84] focus:outline-none appearance-none cursor-pointer pr-8"
+                    >
+                      {createNoticeData.targetAudience && !TARGET_AUDIENCES.includes(createNoticeData.targetAudience) && (
+                        <option value={createNoticeData.targetAudience}>{createNoticeData.targetAudience}</option>
+                      )}
+                      {TARGET_AUDIENCES.map((aud) => (
+                        <option key={aud} value={aud}>
+                          {aud}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-[#737782] text-[18px] pointer-events-none">
+                      expand_more
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -761,7 +894,7 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
             </div>
 
             {/* Card 2: Student Action & Deadlines */}
-            <div className="bg-white rounded-xl border border-[#e2e6ec] p-5 sm:p-6 shadow-xs flex flex-col gap-4">
+            <div className="bg-white rounded-xl border border-[#e2e6ec] p-4 sm:p-6 shadow-xs flex flex-col gap-4">
               <div className="flex items-center gap-2.5 pb-3 border-b border-[#e2e6ec]">
                 <div className="w-8 h-8 rounded-lg bg-[#ea580c]/10 text-[#ea580c] flex items-center justify-center shrink-0">
                   <span className="material-symbols-outlined text-[20px]">alarm</span>
@@ -796,7 +929,7 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
                       type="checkbox"
                       checked={createNoticeData.isUrgent || false}
                       onChange={(e) => setCreateNoticeData((prev) => ({ ...prev, isUrgent: e.target.checked }))}
-                      className="accent-[#ef4444] h-3.5 w-3.5 rounded"
+                      className="accent-[#ef4444] h-3.5 w-3.5 rounded cursor-pointer"
                     />
                     <span className="font-semibold text-[#ef4444]">Mark as Urgent</span>
                   </label>
@@ -805,7 +938,7 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
                       type="checkbox"
                       checked={createNoticeData.isImportant || false}
                       onChange={(e) => setCreateNoticeData((prev) => ({ ...prev, isImportant: e.target.checked }))}
-                      className="accent-[#00275a] h-3.5 w-3.5 rounded"
+                      className="accent-[#00275a] h-3.5 w-3.5 rounded cursor-pointer"
                     />
                     <span className="font-semibold text-[#00275a]">Important</span>
                   </label>
@@ -814,19 +947,56 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
 
               {createNoticeData.actionRequired && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1 animate-in fade-in duration-200">
+                  {/* Action Deadline (Calendar Date + Time Picker) */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold uppercase tracking-wider text-[#434751]">
-                      Action Deadline
+                    <label className="text-xs font-bold uppercase tracking-wider text-[#434751] flex items-center justify-between">
+                      <span className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[15px] text-[#ea580c]">event_upcoming</span>
+                        <span>Action Deadline</span>
+                      </span>
+                      <span className="text-[11px] font-semibold text-[#ea580c]">
+                        {formatDeadlineToDisplay(actionDeadlineDate, actionDeadlineTime)}
+                      </span>
                     </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Oct 28, 2024 · 05:00 PM"
-                      value={createNoticeData.actionDeadline || ''}
-                      onChange={(e) => setCreateNoticeData((prev) => ({ ...prev, actionDeadline: e.target.value }))}
-                      className="w-full px-3.5 py-2.5 bg-white text-[#1c1b1b] text-sm border border-[#e2e6ec] rounded-lg focus:border-[#003c84] focus:ring-1 focus:ring-[#003c84] focus:outline-none"
-                    />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div className="relative">
+                        <input
+                          type="date"
+                          required={createNoticeData.actionRequired}
+                          value={actionDeadlineDate}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setActionDeadlineDate(val);
+                            setCreateNoticeData((prev) => ({
+                              ...prev,
+                              actionDeadline: formatDeadlineToDisplay(val, actionDeadlineTime),
+                            }));
+                          }}
+                          className="w-full px-3 py-2 bg-white text-[#1c1b1b] text-xs sm:text-sm border border-[#e2e6ec] rounded-lg focus:border-[#003c84] focus:ring-1 focus:ring-[#003c84] focus:outline-none cursor-pointer"
+                          title="Select deadline date"
+                        />
+                      </div>
+                      <div className="relative">
+                        <input
+                          type="time"
+                          required={createNoticeData.actionRequired}
+                          value={actionDeadlineTime}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setActionDeadlineTime(val);
+                            setCreateNoticeData((prev) => ({
+                              ...prev,
+                              actionDeadline: formatDeadlineToDisplay(actionDeadlineDate, val),
+                            }));
+                          }}
+                          className="w-full px-3 py-2 bg-white text-[#1c1b1b] text-xs sm:text-sm border border-[#e2e6ec] rounded-lg focus:border-[#003c84] focus:ring-1 focus:ring-[#003c84] focus:outline-none cursor-pointer"
+                          title="Select deadline time"
+                        />
+                      </div>
+                    </div>
                   </div>
 
+                  {/* Action Instruction */}
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold uppercase tracking-wider text-[#434751]">
                       Action Instruction
@@ -836,7 +1006,7 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
                       placeholder="e.g. Mandatory submission for hall ticket clearance."
                       value={createNoticeData.actionDescription || ''}
                       onChange={(e) => setCreateNoticeData((prev) => ({ ...prev, actionDescription: e.target.value }))}
-                      className="w-full px-3.5 py-2.5 bg-white text-[#1c1b1b] text-sm border border-[#e2e6ec] rounded-lg focus:border-[#003c84] focus:ring-1 focus:ring-[#003c84] focus:outline-none"
+                      className="w-full px-3.5 py-2.5 bg-white text-[#1c1b1b] text-sm border border-[#e2e6ec] rounded-lg focus:border-[#003c84] focus:ring-1 focus:ring-[#003c84] focus:outline-none transition-colors"
                     />
                   </div>
                 </div>
@@ -844,7 +1014,7 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
             </div>
 
             {/* Card 3: Attachments */}
-            <div className="bg-white rounded-xl border border-[#e2e6ec] p-5 sm:p-6 shadow-xs flex flex-col gap-4">
+            <div className="bg-white rounded-xl border border-[#e2e6ec] p-4 sm:p-6 shadow-xs flex flex-col gap-4">
               <div className="flex items-center gap-2.5 pb-3 border-b border-[#e2e6ec]">
                 <div className="w-8 h-8 rounded-lg bg-[#003c84]/10 text-[#003c84] flex items-center justify-center shrink-0">
                   <span className="material-symbols-outlined text-[20px]">attach_file</span>
@@ -922,17 +1092,17 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
             </div>
 
             {/* Bottom Actions Row */}
-            <div className="flex items-center justify-end gap-3 pt-2">
+            <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={handleCancelCreate}
-                className="px-5 py-2.5 bg-white border border-[#e2e6ec] text-[#434751] hover:bg-[#f1f5f9] text-xs sm:text-sm font-semibold rounded-lg transition-colors cursor-pointer"
+                className="w-full sm:w-auto px-5 py-2.5 bg-white border border-[#e2e6ec] text-[#434751] hover:bg-[#f1f5f9] text-xs sm:text-sm font-semibold rounded-lg transition-colors cursor-pointer text-center"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-6 py-2.5 bg-[#003c84] hover:bg-[#00275a] text-white text-xs sm:text-sm font-bold rounded-lg shadow-sm transition-colors flex items-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto px-6 py-2.5 bg-[#003c84] hover:bg-[#00275a] text-white text-xs sm:text-sm font-bold rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[18px]">
                   {editingNoticeId ? 'save' : 'publish'}
@@ -959,10 +1129,10 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
             </p>
           </div>
 
-          {/* Split Master-Detail Workbench Layout (~60% Left, ~40% Right) */}
+          {/* Split Master-Detail Workbench Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
             {/* Left Column (lg:col-span-7): Filter Bar + Notice List */}
-            <div className="lg:col-span-7 flex flex-col gap-3">
+            <div className="lg:col-span-7 flex flex-col gap-3 min-w-0">
               {/* Filter & Query Command Bar */}
               <div className="bg-white p-3.5 rounded-lg border border-[#e2e6ec] shadow-xs flex flex-col gap-3">
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center">
@@ -1051,9 +1221,9 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
                       )}
                     </button>
 
-                    {/* Calendar Dropdown */}
+                    {/* Calendar Dropdown Popup */}
                     {isDatePickerOpen && (
-                      <div className="absolute right-0 sm:right-auto sm:left-0 top-full mt-1.5 z-50 bg-white border border-[#e2e6ec] rounded-lg shadow-lg p-3 w-[270px] text-[#1c1b1b]">
+                      <div className="absolute right-0 sm:right-auto sm:left-0 top-full mt-1.5 z-50 bg-white border border-[#e2e6ec] rounded-lg shadow-lg p-3 w-[270px] max-w-[calc(100vw-2.5rem)] text-[#1c1b1b]">
                         <div className="flex items-center justify-between mb-2 pb-2 border-b border-[#e2e6ec]">
                           <button
                             type="button"
@@ -1166,7 +1336,7 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
                 </div>
 
                 {/* List Items */}
-                <div className="divide-y divide-[#e2e6ec]">
+                <div>
                   {paginatedNotices.length === 0 ? (
                     <div className="p-8 text-center flex flex-col items-center justify-center">
                       <span className="material-symbols-outlined text-4xl text-[#737782] mb-2">
@@ -1185,35 +1355,43 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
                     </div>
                   ) : (
                     paginatedNotices.map((notice) => {
-                      const isSelected = activeNotice?.id === notice.id;
+                      const isSelected = notice.id === currentSelectedNoticeId;
 
                       return (
                         <div
                           key={notice.id}
                           onClick={() => setSelectedNoticeId(notice.id)}
-                          className={`p-4 transition-all cursor-pointer relative ${
+                          style={{ borderLeftColor: isSelected ? '#00275a' : 'transparent' }}
+                          className={`p-3.5 sm:p-4 transition-all cursor-pointer relative border-b border-[#e2e6ec] last:border-b-0 border-l-4 ${
                             isSelected
-                              ? 'bg-[#d8e2ff]/30 border-l-4 border-[#00275a]'
-                              : 'hover:bg-[#f8fafc] border-l-4 border-transparent'
+                              ? 'bg-[#d8e2ff]/30 !border-l-[#00275a]'
+                              : 'hover:bg-[#f8fafc] !border-l-transparent'
                           }`}
                         >
                           <div className="flex flex-col gap-1.5">
-                            {/* Category Pill + Title */}
-                            <div className="flex items-center gap-2 flex-wrap">
+                            {/* Title Row with status indicators (NO hover underline) */}
+                            <div className="flex items-start gap-2">
                               {notice.isImportant && (
-                                <span className="w-2 h-2 rounded-full bg-[#00275a] shrink-0" title="Important Notice"></span>
+                                <span className="w-2 h-2 rounded-full bg-[#00275a] shrink-0 mt-1.5" title="Important Notice"></span>
                               )}
                               {notice.isUrgent && (
-                                <span className="w-2 h-2 rounded-full bg-[#ef4444] shrink-0" title="Urgent Notice"></span>
+                                <span className="w-2 h-2 rounded-full bg-[#ef4444] shrink-0 mt-1.5" title="Urgent Notice"></span>
                               )}
+                              <h3 className="text-sm sm:text-base font-bold tracking-tight text-[#00275a] flex-1 min-w-0 leading-snug">
+                                {notice.title}
+                              </h3>
+                            </div>
 
+                            {/* Category Tag directly BELOW Title */}
+                            <div className="flex items-center gap-2 flex-wrap">
                               <span className={`inline-block px-2 py-0.5 text-[10px] uppercase tracking-wider font-bold rounded shrink-0 ${getCategoryBadgeClass(notice.category)}`}>
                                 {notice.category}
                               </span>
-
-                              <h3 className="text-sm sm:text-base font-bold tracking-tight text-[#00275a] hover:underline flex-1 min-w-0">
-                                {notice.title}
-                              </h3>
+                              {notice.isUrgent && (
+                                <span className="text-[10px] font-bold text-[#ef4444] bg-[#fee2e2] px-1.5 py-0.2 rounded border border-[#fca5a5] uppercase tracking-wider">
+                                  Urgent
+                                </span>
+                              )}
                             </div>
 
                             {/* 2-line summary snippet */}
@@ -1251,7 +1429,7 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
                 </div>
               </div>
 
-              {/* Pagination */}
+              {/* Pagination Controls */}
               {filteredNotices.length > 0 && (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 py-1 text-xs text-[#5c6470]">
                   <div className="flex items-center gap-3">
@@ -1313,7 +1491,7 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
             </div>
 
             {/* Right Column (~40% width: lg:col-span-5): Notice Inspector */}
-            <div className="lg:col-span-5 sticky top-20">
+            <div className="lg:col-span-5 w-full lg:sticky lg:top-20">
               {activeNotice ? (
                 <div className="bg-white rounded-lg border border-[#e2e6ec] shadow-xs overflow-hidden flex flex-col">
                   {/* Inspector Header */}
@@ -1369,7 +1547,7 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
                     )}
 
                     {/* Metadata Grid */}
-                    <div className="grid grid-cols-2 gap-3 py-2.5 border-y border-[#e2e6ec] text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-2.5 border-y border-[#e2e6ec] text-xs">
                       <div className="flex flex-col">
                         <span className="text-[10px] uppercase tracking-wider text-[#5c6470] font-semibold">
                           Issued By
@@ -1426,8 +1604,8 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
                       </div>
                     )}
 
-                    {/* Action Buttons: Edit & Delete Only */}
-                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#e2e6ec]">
+                    {/* Action Buttons: Edit & Delete */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-[#e2e6ec]">
                       <button
                         onClick={() => handleOpenEdit(activeNotice)}
                         className="py-2.5 px-3 bg-[#003c84] hover:bg-[#00275a] text-white text-xs sm:text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 rounded-lg cursor-pointer shadow-2xs"

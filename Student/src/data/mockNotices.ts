@@ -1,10 +1,10 @@
-import type { 
-  Notice, 
-  ScheduleItem, 
-  ActionItem, 
-  RecentUpdate, 
-  CollegeDocument, 
-  FeaturedEvent 
+import type {
+  Notice,
+  ScheduleItem,
+  ActionItem,
+  RecentUpdate,
+  CollegeDocument,
+  FeaturedEvent
 } from '../types/notice';
 
 export const mockRecentUpdates: RecentUpdate[] = [
@@ -120,46 +120,148 @@ export const mockCollegeDocuments: CollegeDocument[] = [
 
 export const mockFeaturedEvents: FeaturedEvent[] = [
   {
+    id: 'evt-4',
+    title: "Gusto '24 — Grand Annual Cultural Extravaganza",
+    tag: 'CULTURAL FEST',
+    category: 'Cultural Events',
+    image: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80',
+    shortDescription: 'Western India\'s grandest collegiate festival featuring Celebrity Band Night, Street Play, Haute Couture fashion walk, and Art Exhibitions.',
+    longDescription: 'Indira College of Engineering and Management presents Gusto \'24. A 3-day gala of music, theatrical arts, dance battles, and fashion showcases evaluated by celebrity judges. Inter-collegiate teams across Maharashtra compete for championship trophies.',
+    registrationUrl: 'https://indiraicem.ac.in/gusto24',
+    deadlineText: 'Dec 14-16 • Pass Bookings Open',
+    startDate: 'Dec 14, 2023',
+    endDate: 'Dec 16, 2023',
+    time: '04:00 PM – 10:00 PM',
+    venue: 'College Open-Air Amphitheatre & Sports Arena',
+    isFeatured: true,
+    status: 'open',
+    noticeId: 'notice-10',
+  },
+  {
     id: 'evt-1',
     title: "National Innovation Hackathon '24",
     tag: 'HACKATHON',
+    category: 'Competitions',
     image: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=800&q=80',
     shortDescription: '24-hour national level software and hardware sprint with cash prizes exceeding ₹2,50,000.',
+    longDescription: 'Organized under the flagship Innovate \'24 banner, this hackathon invites innovative student developers to build AI, IoT, FinTech, and Smart City solutions over 24 uninterrupted hours with mentorship from top tech leads.',
     registrationUrl: 'https://indiraicem.ac.in/hackathon24',
-    deadlineText: 'Registration closes Sept 20',
+    deadlineText: 'Registration closes Nov 10',
     startDate: 'Nov 15, 2023',
     endDate: 'Nov 16, 2023',
+    time: '09:00 AM onwards (24h)',
     venue: 'ICEM Innovation Lab & Engineering Quad',
     isFeatured: true,
     status: 'closing-soon',
+    noticeId: 'notice-10',
   },
   {
-    id: 'evt-2',
-    title: 'AI & Cloud Infrastructure Bootcamp',
-    tag: 'WORKSHOP',
-    image: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=800&q=80',
-    shortDescription: 'Hands-on industrial masterclass on LLMs, Kubernetes, and scalable distributed systems by Google Architects.',
-    registrationUrl: 'https://indiraicem.ac.in/ai-bootcamp',
-    deadlineText: 'Oct 26 • Limited 60 Seats',
-    startDate: 'Oct 26, 2023',
-    endDate: 'Oct 27, 2023',
-    venue: 'Central Seminar Hall (Block B, 3rd Floor)',
-    isFeatured: true,
+    id: 'evt-5',
+    title: "Rangmanch '24 — Inter-Collegiate One-Act Drama Championship",
+    tag: 'THEATRE & ARTS',
+    category: 'Cultural Events',
+    image: 'https://images.unsplash.com/photo-1469488865564-c2de10f69f96?auto=format&fit=crop&w=800&q=80',
+    shortDescription: 'State-level dramatic competition hosting top collegiate theatre troupes from Maharashtra across Marathi, Hindi, and English plays.',
+    longDescription: 'Annual theatre festival dedicated to promoting powerful socio-cultural storytelling. Judged by veterans of Sangeet Natak Akademi and National School of Drama alumni.',
+    registrationUrl: 'https://indiraicem.ac.in/rangmanch24',
+    deadlineText: 'Nov 28 • Entry Submissions',
+    startDate: 'Nov 28, 2023',
+    endDate: 'Nov 29, 2023',
+    time: '10:00 AM – 06:00 PM',
+    venue: 'Main Auditorium (Block A)',
+    isFeatured: false,
     status: 'open',
+    noticeId: 'notice-10',
   },
   {
     id: 'evt-3',
     title: "Innovate '24 — Technical & Robotic Fest",
     tag: 'TECH FEST',
+    category: 'Festivals',
     image: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=800&q=80',
     shortDescription: 'Flagship engineering extravaganza featuring RoboWars, Drone Racing, and Project Exhibition.',
+    longDescription: 'Annual technical fest bringing together over 3,000 engineering participants across Western Maharashtra for RoboWars in an armored arena, FPV drone obstacle courses, and paper presentations.',
     registrationUrl: 'https://indiraicem.ac.in/innovate24',
     deadlineText: 'Nov 15-17 • Registration Open',
     startDate: 'Nov 15, 2023',
     endDate: 'Nov 17, 2023',
+    time: '09:30 AM – 05:30 PM',
     venue: 'ICEM Main Auditorium & Ground',
     isFeatured: true,
     status: 'open',
+    noticeId: 'notice-10',
+  },
+  {
+    id: 'evt-2',
+    title: 'AI & Cloud Infrastructure Bootcamp',
+    tag: 'WORKSHOP',
+    category: 'Workshops',
+    image: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=800&q=80',
+    shortDescription: 'Hands-on industrial masterclass on LLMs, Kubernetes, and scalable distributed systems by Google Architects.',
+    longDescription: 'Two-day intensive technical bootcamp for computer engineering students covering containerization, Kubernetes cluster management, ML pipelines, and production inference optimization.',
+    registrationUrl: 'https://indiraicem.ac.in/ai-bootcamp',
+    deadlineText: 'Oct 26 • Limited 60 Seats',
+    startDate: 'Oct 26, 2023',
+    endDate: 'Oct 27, 2023',
+    time: '02:00 PM – 04:30 PM',
+    venue: 'Central Seminar Hall (Block B, 3rd Floor)',
+    isFeatured: false,
+    status: 'open',
+    noticeId: 'notice-4',
+  },
+  {
+    id: 'evt-6',
+    title: "Tarang '24 — Classical & Western Dance Face-Off",
+    tag: 'DANCE & MUSIC',
+    category: 'Competitions',
+    image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=800&q=80',
+    shortDescription: 'Solo, duet, and group dance battles evaluated by renowned choreographers with trophies and cash rewards.',
+    longDescription: 'High-energy choreography battles in Hip-Hop, Contemporary, Folk, and Classical fusion. Participating crews receive official stage certificate and duty leave allowances.',
+    registrationUrl: 'https://indiraicem.ac.in/tarang24',
+    deadlineText: 'Dec 02 • Limited Team Slots',
+    startDate: 'Dec 02, 2023',
+    endDate: 'Dec 02, 2023',
+    time: '03:00 PM – 08:00 PM',
+    venue: 'Central Sports Complex Arena',
+    isFeatured: false,
+    status: 'closing-soon',
+    noticeId: 'notice-10',
+  },
+  {
+    id: 'evt-7',
+    title: 'Inter-Department Basketball & Futsal Championship',
+    tag: 'SPORTS',
+    category: 'College Events',
+    image: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=800&q=80',
+    shortDescription: 'Annual inter-department sports tournament selection trials open for all academic years.',
+    longDescription: 'Departmental sports showdown across basketball, volleyball, and futsal. Winners will represent ICEM at the Savitribai Phule Pune University zonal tournament.',
+    registrationUrl: 'https://indiraicem.ac.in/sports-cup',
+    deadlineText: 'Oct 27-28 • Team Nominations',
+    startDate: 'Oct 27, 2023',
+    endDate: 'Oct 28, 2023',
+    time: '08:00 AM – 06:00 PM',
+    venue: 'College Sports Complex & Turf',
+    isFeatured: false,
+    status: 'open',
+    noticeId: 'notice-5',
+  },
+  {
+    id: 'evt-8',
+    title: 'Symphony & NatyaRang Cultural Audition Sessions',
+    tag: 'AUDITIONS',
+    category: 'Student Activities',
+    image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80',
+    shortDescription: 'Open student council auditions for vocalists, instrumentalists, scriptwriters, and actors for upcoming youth festivals.',
+    longDescription: 'Annual recruitment and screening by senior cultural coordinators. Selected members join official college teams representing ICEM at Purushottam and Firodiya Karandak.',
+    registrationUrl: 'https://indiraicem.ac.in/auditions',
+    deadlineText: 'Nov 06-08 • Direct Walk-in',
+    startDate: 'Nov 06, 2023',
+    endDate: 'Nov 08, 2023',
+    time: '03:00 PM – 06:00 PM',
+    venue: 'Music Studio & Amphitheatre Stage',
+    isFeatured: false,
+    status: 'open',
+    noticeId: 'notice-10',
   }
 ];
 
@@ -663,6 +765,209 @@ export const mockNotices: Notice[] = [
       }
     ],
     accentColor: 'primary',
+  },
+  {
+    id: 'notice-14',
+    title: 'Indira Annual Cultural Gathering "Gusto \'24" — Registrations & Auditions',
+    category: 'Events',
+    date: 'Oct 26, 2023',
+    time: '11:30 AM',
+    summary: 'Auditions for Dance, Music, Theatre, Fashion Show, and Anchor teams commence from next Monday. Exciting events, external celebrity judges, and prizes worth ₹3,50,000.',
+    content: 'All students are invited to register for stage events and backstage management committees for Gusto \'24. Download the official circular and audition guidelines.',
+    fullBody: {
+      salutation: 'Dear Students & Cultural Enthusiasts,',
+      introduction: 'The Student Council is thrilled to announce the 2024 edition of "Gusto", the flagship annual cultural celebration of Indira College of Engineering & Management.',
+      sections: [
+        {
+          title: 'Audition & Screening Schedule',
+          items: [
+            'Celebrity Band Night & Solo Vocals: Dec 14, 2023 (Open-Air Amphitheatre)',
+            'Dance Battles (Crew & Duet): Dec 15, 2023 (Sports Complex Arena)',
+            'Fashion Show & One-Act Theatre: Dec 16, 2023 (Main Auditorium)'
+          ]
+        },
+        {
+          title: 'Participation Guidelines',
+          items: [
+            'All academic branches and years are eligible to participate.',
+            'College duty leave will be sanctioned for official rehearsals.',
+            'Winner trophies and certificates validated by university council.'
+          ]
+        }
+      ],
+      callout: 'Participants representing college at inter-collegiate festivals will be awarded academic attendance allowances.'
+    },
+    important: true,
+    actionRequired: true,
+    actionDeadline: 'Nov 05, 2023',
+    targetAudience: 'All First Year, SE, TE & BE Students',
+    department: 'Student Cultural Council & Dean Welfare',
+    departmentKey: 'all',
+    issuedBy: 'Prof. Anjali Deshpande (Cultural Head)',
+    attachments: [
+      {
+        name: 'Gusto24_Rulebook_Categories.pdf',
+        size: '3.8 MB',
+        type: 'pdf',
+      },
+      {
+        name: 'Cultural_Audition_Form.pdf',
+        size: '760 KB',
+        type: 'pdf',
+      }
+    ],
+    accentColor: 'secondary',
+  },
+  {
+    id: 'notice-15',
+    title: 'National Innovation Hackathon \'24 — 24-Hour Code Sprint (₹2.5L Cash Prizes)',
+    category: 'Events',
+    date: 'Oct 23, 2023',
+    time: '10:00 AM',
+    summary: 'National level 24-hour software and hardware development sprint open for inter-collegiate engineering teams. Problem statements released on IoT, AI, and Sustainable Energy.',
+    content: 'Registration portal is live for team formations. Mentorship provided by Google and AWS senior architects during the competition.',
+    fullBody: {
+      salutation: 'Attention Hackers & Innovators,',
+      introduction: 'Indira College of Engineering & Management announces the National Innovation Hackathon 2024. Build transformative software and hardware prototypes in 24 hours.',
+      sections: [
+        {
+          title: 'Sprint Details',
+          items: [
+            'Date: November 15-16, 2023 | 09:00 AM (24 Hours Uninterrupted)',
+            'Venue: ICEM Innovation Lab & Engineering Quad',
+            'Team Size: 3 to 4 members per team',
+            'Cash Prizes: 1st Prize ₹1,00,000 | 2nd Prize ₹75,000 | 3rd Prize ₹50,000'
+          ]
+        }
+      ],
+      callout: 'High-speed internet, power stations, and overnight meals will be provided to all verified participants.'
+    },
+    important: true,
+    actionRequired: true,
+    actionDeadline: 'Nov 10, 2023',
+    targetAudience: 'Engineering & Polytechnic Students',
+    department: 'Innovation & Entrepreneurship Cell',
+    departmentKey: 'all',
+    issuedBy: 'Hackathon Organizing Committee',
+    attachments: [
+      {
+        name: 'Hackathon24_Problem_Statements.pdf',
+        size: '2.1 MB',
+        type: 'pdf',
+      }
+    ],
+    accentColor: 'primary',
+  },
+  {
+    id: 'notice-16',
+    title: 'Rangmanch \'24 — Inter-Collegiate One-Act Drama Championship',
+    category: 'Events',
+    date: 'Oct 22, 2023',
+    time: '02:30 PM',
+    summary: 'State-level dramatic competition hosting top collegiate theatre troupes from Maharashtra across Marathi, Hindi, and English one-act plays.',
+    content: 'Submit script synopses and stage layout requirements by November 20. Evaluated by renowned Marathi theatre directors and NSD alumni.',
+    fullBody: {
+      salutation: 'Calling All Dramatic Artists,',
+      introduction: 'Indira NatyaRang invites submissions for "Rangmanch \'24", our signature inter-collegiate theatrical competition.',
+      sections: [
+        {
+          title: 'Stage Rules',
+          items: [
+            'Time Limit: 30 minutes including stage set up and clearance',
+            'Venue: Main Auditorium (Block A)',
+            'Languages: Marathi, Hindi, and English',
+            'Dates: November 28-29, 2023'
+          ]
+        }
+      ],
+      callout: 'Best Play, Best Actor, Best Director, and Best Technical Design trophies will be awarded.'
+    },
+    important: false,
+    targetAudience: 'College Drama Societies',
+    department: 'Cultural & Theatre Guild',
+    departmentKey: 'all',
+    issuedBy: 'Director of Cultural Affairs',
+    attachments: [
+      {
+        name: 'Rangmanch24_Guidelines.pdf',
+        size: '1.5 MB',
+        type: 'pdf',
+      }
+    ],
+    accentColor: 'info',
+  },
+  {
+    id: 'notice-17',
+    title: 'Tarang \'24 — Classical & Western Dance Championship Call for Entries',
+    category: 'Events',
+    date: 'Oct 21, 2023',
+    time: '04:00 PM',
+    summary: 'Solo, duet, and group choreography battles across Bollywood, Hip-Hop, Contemporary, and Classical fusion styles.',
+    content: 'Departmental selections and inter-college entries are now open. Limited 15 team slots on a first-come first-served basis.',
+    fullBody: {
+      salutation: 'Attention Dance Crews,',
+      introduction: 'Showcase your choreography on the biggest stage. Tarang 2024 registrations are officially open.',
+      sections: [
+        {
+          title: 'Event Schedule',
+          items: [
+            'Event Date: December 02, 2023 | 03:00 PM onwards',
+            'Venue: Central Sports Complex Arena',
+            'Categories: Solo, Duet, Mega-Crew (8-20 members)'
+          ]
+        }
+      ],
+      callout: 'Music audio tracks must be submitted in MP3 format to the cultural desk 48 hours prior to the event.'
+    },
+    important: false,
+    targetAudience: 'All College Dance Enthusiasts',
+    department: 'Dance Society & Student Council',
+    departmentKey: 'all',
+    issuedBy: 'Student Council President',
+    attachments: [
+      {
+        name: 'Tarang24_Rulebook.pdf',
+        size: '950 KB',
+        type: 'pdf',
+      }
+    ],
+    accentColor: 'secondary',
+  },
+  {
+    id: 'notice-18',
+    title: 'Symphony Music Club & NatyaRang Theatre Audition Schedule 2023',
+    category: 'Events',
+    date: 'Oct 19, 2023',
+    time: '03:00 PM',
+    summary: 'Open auditions for singers, instrumentalists, percussionists, and actors representing ICEM at Purushottam and Firodiya Karandak.',
+    content: 'Walk-in screening sessions across Monday through Wednesday at the Music Studio and Auditorium stage.',
+    fullBody: {
+      salutation: 'Dear Students,',
+      introduction: 'Join ICEM\'s premiere student cultural bodies. Auditions will be conducted by senior coordinators and faculty mentors.',
+      sections: [
+        {
+          title: 'Audition Slots',
+          items: [
+            'Vocalists & Instrumentalists: Nov 06, 2023 | 03:00 PM (Music Studio)',
+            'Actors & Scriptwriters: Nov 07, 2023 | 03:30 PM (Auditorium Stage)'
+          ]
+        }
+      ],
+      callout: 'Bring your college ID card. Instruments will be available in the studio.'
+    },
+    important: false,
+    targetAudience: 'All Enrolled Students',
+    department: 'Music & Fine Arts Cell',
+    departmentKey: 'all',
+    issuedBy: 'Faculty Coordinator - Cultural Affairs',
+    attachments: [
+      {
+        name: 'Audition_Registration_Form.pdf',
+        size: '500 KB',
+        type: 'pdf',
+      }
+    ],
+    accentColor: 'neutral',
   }
 ];
 

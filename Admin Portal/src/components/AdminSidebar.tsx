@@ -17,13 +17,12 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   onClose,
   onSwitchToStudentPortal,
 }) => {
-  const categoryItems = [
+  const navItems = [
     { id: 'all', label: 'All Notices', icon: 'dashboard' },
     { id: 'Academics', label: 'Academics', icon: 'school' },
     { id: 'Examination', label: 'Examination', icon: 'fact_check' },
     { id: 'Placement & Training', label: 'Placement & Training', icon: 'work' },
     { id: 'Events & Cultural', label: 'Events & Cultural', icon: 'celebration' },
-    { id: 'Administration', label: 'Administration', icon: 'corporate_fare' },
   ];
 
   return (
@@ -72,16 +71,16 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
             </button>
           </div>
 
-          {/* Section Label: Categories Navigation */}
+          {/* Section Label: Notice Categories Navigation */}
           <div className="px-4 pt-4 pb-1.5">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#5c6470]">
               Notice Categories
             </span>
           </div>
 
-          {/* Category Navigation Items */}
-          <nav className="flex flex-col gap-1 px-2">
-            {categoryItems.map((item) => {
+          {/* Navigation Items */}
+          <nav className="flex flex-col gap-1 px-2 pb-3">
+            {navItems.map((item) => {
               const isDashboard = currentTab === 'dashboard' || currentTab === 'manage-notices';
               const isActive = isDashboard && (
                 item.id === 'all'

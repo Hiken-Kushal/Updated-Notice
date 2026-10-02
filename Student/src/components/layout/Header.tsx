@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Search, Bell, Menu, X, ArrowRight } from 'lucide-react';
+import React from 'react';
+import { Search, Menu, X, ShieldCheck, ChevronRight } from 'lucide-react';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -7,6 +7,7 @@ interface HeaderProps {
   onSearchChange: (value: string) => void;
   onSearchSubmit?: () => void;
   onNavigateNotice?: (id: string) => void;
+  onNavigateAdminLogin?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -14,33 +15,16 @@ export const Header: React.FC<HeaderProps> = ({
   searchTerm,
   onSearchChange,
   onSearchSubmit,
-  onNavigateNotice,
+  onNavigateAdminLogin,
 }) => {
-  const [showNotifications, setShowNotifications] = useState(false);
-
-  const notifications = [
-    {
-      id: 'notif-1',
-      title: 'TCS Placement Drive deadline in 24 hours',
-      time: '2 hours ago',
-      noticeId: 'notice-1',
-      unread: true,
-    },
-    {
-      id: 'notif-2',
-      title: 'Revised Examination Timetable published',
-      time: '5 hours ago',
-      noticeId: 'notice-2',
-      unread: true,
-    },
-    {
-      id: 'notif-3',
-      title: 'Mandatory Anti-Ragging Affidavit Submission',
-      time: '1 day ago',
-      noticeId: 'notice-3',
-      unread: false,
-    },
-  ];
+  const handleAdminClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (onNavigateAdminLogin) {
+      onNavigateAdminLogin();
+    } else {
+      window.location.hash = '#/admin-login';
+    }
+  };
 
   return (
     <header className="fixed top-0 left-0 lg:left-72 right-0 h-14 bg-white/95 backdrop-blur-sm z-30 px-3 sm:px-4 flex items-center justify-between border-b border-[#e2e6ec] shadow-xs">
@@ -85,65 +69,28 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Right: Notifications & Institutional Label (No Student Login / Avatar) */}
+      {/* Right: Institutional Label & Admin Portal Button */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {/* Institutional Portal Label */}
-        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-[#00275a]/5 border border-[#00275a]/10 rounded-sm text-xs font-semibold text-[#00275a]">
+        <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 bg-[#00275a]/5 border border-[#00275a]/10 rounded-sm text-xs font-semibold text-[#00275a]">
           <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
           <span>ICEM Notice Portal</span>
         </div>
 
-        {/* Notification Bell with Dropdown */}
-        <div className="relative">
-          <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            className="w-9 h-9 flex items-center justify-center text-[#737782] hover:text-[#00275a] hover:bg-[#f5f7fa] rounded transition-colors relative cursor-pointer"
-            aria-label="View notifications"
-          >
-            <Bell className="w-[19px] h-[19px]" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#ef4444] rounded-full ring-2 ring-white"></span>
-          </button>
-
-          {showNotifications && (
-            <div className="absolute right-0 mt-2 w-[calc(100vw-1.5rem)] max-w-sm sm:w-96 bg-white border border-[#e2e6ec] rounded-lg shadow-lg py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-              <div className="px-4 py-2 border-b border-[#e2e6ec] flex items-center justify-between">
-                <span className="font-semibold text-xs text-[#00275a] uppercase tracking-wider">Latest Alerts</span>
-                <span className="text-[11px] text-[#00696c] font-medium hover:underline cursor-pointer">Official Circulars</span>
-              </div>
-              <div className="divide-y divide-[#e2e6ec] max-h-72 overflow-y-auto">
-                {notifications.map((n) => (
-                  <div
-                    key={n.id}
-                    onClick={() => {
-                      if (onNavigateNotice) onNavigateNotice(n.noticeId);
-                      setShowNotifications(false);
-                    }}
-                    className={`p-3 text-xs hover:bg-[#f5f7fa] cursor-pointer transition-colors flex gap-2.5 items-start ${
-                      n.unread ? 'bg-[#003c84]/5 font-medium' : ''
-                    }`}
-                  >
-                    <div className="w-2 h-2 rounded-full bg-[#003c84] mt-1 shrink-0" />
-                    <div className="flex-1">
-                      <p className="text-[#1c1b1b] leading-tight">{n.title}</p>
-                      <p className="text-[10px] text-[#5c6470] mt-1">{n.time}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="p-2 border-t border-[#e2e6ec] text-center bg-[#fcf9f8]">
-                <button 
-                  onClick={() => {
-                    if (onNavigateNotice) onNavigateNotice('notice-1');
-                    setShowNotifications(false);
-                  }}
-                  className="text-xs text-[#003c84] font-semibold hover:underline flex items-center justify-center gap-1 mx-auto cursor-pointer"
-                >
-                  View in Notice Feed <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Polished Admin Portal Entry Button */}
+        <a
+          href="#/admin-login"
+          onClick={handleAdminClick}
+          className="group relative inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 bg-gradient-to-b from-[#003c84] to-[#00275a] hover:from-[#002e6b] hover:to-[#001d45] active:scale-[0.98] text-white text-xs font-semibold rounded-sm shadow-xs hover:shadow-sm border border-[#00275a]/40 transition-all duration-150 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#003c84]/30 select-none"
+          title="Sign in to Admin Portal"
+        >
+          <div className="w-4 h-4 rounded-xs bg-white/10 flex items-center justify-center shrink-0 border border-white/10 group-hover:bg-white/20 transition-colors">
+            <ShieldCheck className="w-3 h-3 text-blue-100 group-hover:text-white transition-colors" />
+          </div>
+          <span className="tracking-tight text-white font-medium text-xs hidden xs:inline sm:inline">Admin Portal</span>
+          <span className="tracking-tight text-white font-medium text-[11px] xs:hidden sm:hidden">Admin</span>
+          <ChevronRight className="w-3.5 h-3.5 text-blue-200/80 group-hover:text-white group-hover:translate-x-0.5 transition-all hidden sm:inline shrink-0 -ml-0.5" />
+        </a>
       </div>
     </header>
   );
