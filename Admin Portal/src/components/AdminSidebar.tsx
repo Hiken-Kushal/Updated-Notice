@@ -7,6 +7,7 @@ interface AdminSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onSwitchToStudentPortal?: () => void;
+  onLogout?: () => void;
 }
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({
@@ -16,6 +17,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   isOpen,
   onClose,
   onSwitchToStudentPortal,
+  onLogout,
 }) => {
   const navItems = [
     { id: 'all', label: 'All Notices', icon: 'dashboard' },
@@ -130,16 +132,28 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
                 <span className="text-[10px] text-[#5c6470] truncate">ICEM Administration</span>
               </div>
             </div>
-            {onSwitchToStudentPortal && (
-              <button
-                onClick={onSwitchToStudentPortal}
-                title="Switch to Student Portal"
-                className="p-1 text-[#00696c] hover:bg-[#75f6fb]/20 rounded cursor-pointer transition-colors"
-                aria-label="Student Portal"
-              >
-                <span className="material-symbols-outlined text-[18px]">school</span>
-              </button>
-            )}
+            <div className="flex items-center gap-1">
+              {onSwitchToStudentPortal && (
+                <button
+                  onClick={onSwitchToStudentPortal}
+                  title="Switch to Student Portal"
+                  className="p-1 text-[#00696c] hover:bg-[#75f6fb]/20 rounded cursor-pointer transition-colors"
+                  aria-label="Student Portal"
+                >
+                  <span className="material-symbols-outlined text-[18px]">school</span>
+                </button>
+              )}
+              {onLogout && (
+                <button
+                  onClick={onLogout}
+                  title="Sign Out of Admin Portal"
+                  className="p-1 text-[#dc2626] hover:bg-[#fee2e2] rounded cursor-pointer transition-colors"
+                  aria-label="Sign Out"
+                >
+                  <span className="material-symbols-outlined text-[18px]">logout</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </aside>

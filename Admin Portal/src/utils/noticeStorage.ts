@@ -1,5 +1,4 @@
 import type { AdminNotice } from '../types/adminNotice';
-import { mockAdminNotices } from '../data/mockAdminNotices';
 
 export const NOTICES_STORAGE_KEY = 'icem_notices_v1';
 const BROADCAST_CHANNEL_NAME = 'icem_notices_channel';
@@ -109,20 +108,19 @@ export const time24To12 = (time24?: string): string => {
  */
 export const getStoredNotices = (): AdminNotice[] => {
   try {
-    if (typeof window === 'undefined') return mockAdminNotices;
+    if (typeof window === 'undefined') return [];
     const raw = localStorage.getItem(NOTICES_STORAGE_KEY);
     if (!raw) {
-      localStorage.setItem(NOTICES_STORAGE_KEY, JSON.stringify(mockAdminNotices));
-      return mockAdminNotices;
+      return [];
     }
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
+    if (Array.isArray(parsed)) {
       return parsed;
     }
-    return mockAdminNotices;
+    return [];
   } catch (err) {
     console.error('Failed to parse stored notices:', err);
-    return mockAdminNotices;
+    return [];
   }
 };
 

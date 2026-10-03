@@ -8,6 +8,7 @@ import {
   deleteStoredBanner,
   resetToDefaultBanners,
 } from '../utils/bannerStorage';
+import { AdminApiService } from '../services/adminApi';
 
 interface AdminBannerManagerProps {
   onNavigateTab?: (tab: string) => void;
@@ -40,9 +41,23 @@ export const AdminBannerManager: React.FC<AdminBannerManagerProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formSectionRef = useRef<HTMLDivElement>(null);
 
+  const loadBanners = async () => {
+    try {
+      const data = await AdminApiService.getBanners();
+      if (data && data.length > 0) {
+        setBanners(data);
+        saveStoredBanners(data);
+        return;
+      }
+    } catch (err) {
+      console.warn('Backend banners fetch failed, fallback to local storage:', err);
+    }
+    setBanners(getStoredBanners());
+  };
+
   // Load banners on mount and listen to updates
   useEffect(() => {
-    setBanners(getStoredBanners());
+    loadBanners();
 
     const handleBannerUpdate = (e: any) => {
       if (e.detail) {
@@ -86,44 +101,78 @@ export const AdminBannerManager: React.FC<AdminBannerManagerProps> = ({
   };
 
   // Handle Status Toggle (1-click activate/deactivate)
-  const handleToggle = (id: string, currentStatus: boolean, title: string) => {
-    const updated = toggleBannerStatus(id);
-    setBanners(updated);
-    showToast(
-      currentStatus
-        ? `Deactivated "${title}" — removed from Student Dashboard.`
-        : `Activated "${title}" — published live to Student Dashboard.`
-    );
+  const handleToggle = async (id: string, currentStatus: boolean, title: string) => {
+    try {
+      await AdminApiService.toggleBannerStatus(id, !currentStatus);
+      const updated = banners.map((b) => (b.id === id ? { ...b, isActive: !currentStatus } : b));
+      setBanners(updated);
+      saveStoredBanners(updated);
+      showToast(
+        currentStatus
+          ? `Deactivated "${title}" — removed from Student Dashboard.`
+          : `Activated "${title}" — published live to Student Dashboard.`
+      );
+    } catch (err: any) {
+      console.warn('Backend banner toggle failed, falling back to local:', err);
+      const updated = toggleBannerStatus(id);
+      setBanners(updated);
+      showToast(
+        currentStatus
+          ? `Deactivated "${title}".`
+          : `Activated "${title}".`
+      );
+    }
   };
 
   // Handle Delete Banner
-  const handleDelete = (id: string, title: string) => {
+  const handleDelete = async (id: string, title: string) => {
     if (window.confirm(`Are you sure you want to delete banner "${title}"?`)) {
-      const updated = deleteStoredBanner(id);
-      setBanners(updated);
-      if (editingId === id) {
-        handleCancelEdit();
+      try {
+        await AdminApiService.deleteBanner(id);
+        const updated = banners.filter((b) => b.id !== id);
+        setBanners(updated);
+        saveStoredBanners(updated);
+        if (editingId === id) {
+          handleCancelEdit();
+        }
+        showToast(`Deleted banner "${title}".`);
+      } catch (err: any) {
+        console.warn('Backend banner delete failed, falling back to local:', err);
+        const updated = deleteStoredBanner(id);
+        setBanners(updated);
+        if (editingId === id) {
+          handleCancelEdit();
+        }
+        showToast(`Deleted banner "${title}".`);
       }
-      showToast(`Deleted banner "${title}".`);
     }
   };
 
   // Handle Reset to Defaults
-  const handleResetDefaults = () => {
+  const handleResetDefaults = async () => {
     if (
       window.confirm(
         'Reset all banners to institutional default cards (Hackathon 24, AI Workshop, Tech Fest)?'
       )
     ) {
-      const defaults = resetToDefaultBanners();
-      setBanners(defaults);
-      handleCancelEdit();
-      showToast('Reset banners to default institutional events.');
+      try {
+        const defaults = await AdminApiService.resetBanners();
+        setBanners(defaults);
+        saveStoredBanners(defaults);
+        handleCancelEdit();
+        showToast('Reset banners to default institutional events.');
+      } catch (err: any) {
+        console.warn('Backend banner reset failed, falling back to local:', err);
+        const defaults = resetToDefaultBanners();
+        setBanners(defaults);
+        handleCancelEdit();
+        showToast('Reset banners to default institutional events.');
+      }
     }
   };
 
-  // Handle File Upload to Base64 Data URL
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle File Upload to Backend Disk or fallback Data URL
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -137,18 +186,26 @@ export const AdminBannerManager: React.FC<AdminBannerManagerProps> = ({
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setFormData((prev) => ({ ...prev, image: reader.result as string }));
-        showToast('Image uploaded successfully.');
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      showToast('Uploading banner graphic to server...');
+      const { imageUrl } = await AdminApiService.uploadBannerImage(file);
+      setFormData((prev) => ({ ...prev, image: imageUrl }));
+      showToast('Image uploaded successfully to server.');
+    } catch (err: any) {
+      console.warn('Backend upload failed, converting to local preview:', err);
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          setFormData((prev) => ({ ...prev, image: reader.result as string }));
+          showToast('Image loaded locally.');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   // Handle Form Submit (Save / Update Banner)
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.title?.trim()) {
@@ -161,8 +218,7 @@ export const AdminBannerManager: React.FC<AdminBannerManagerProps> = ({
       return;
     }
 
-    const bannerToSave: DashboardBanner = {
-      id: editingId || `banner-${Date.now()}`,
+    const bannerPayload: Partial<DashboardBanner> = {
       title: formData.title.trim(),
       tag: (formData.tag?.trim() || 'ANNOUNCEMENT').toUpperCase(),
       image: formData.image.trim(),
@@ -176,25 +232,60 @@ export const AdminBannerManager: React.FC<AdminBannerManagerProps> = ({
       isFeatured: true,
       status: (formData.status as any) || 'open',
       isActive: formData.isActive !== false,
-      updatedAt: new Date().toISOString(),
-      createdAt: formData.createdAt || new Date().toISOString(),
     };
 
-    let updatedList: DashboardBanner[];
-    if (editingId) {
-      updatedList = banners.map((b) => (b.id === editingId ? bannerToSave : b));
-      showToast(`Updated "${bannerToSave.title}" successfully.`);
-    } else {
-      updatedList = [bannerToSave, ...banners];
-      showToast(
-        bannerToSave.isActive
-          ? `Created and published "${bannerToSave.title}" to Student Dashboard.`
-          : `Created "${bannerToSave.title}" as draft.`
-      );
+    try {
+      if (editingId) {
+        const saved = await AdminApiService.updateBanner(editingId, bannerPayload);
+        const updatedList = banners.map((b) => (b.id === editingId ? saved : b));
+        setBanners(updatedList);
+        saveStoredBanners(updatedList);
+        showToast(`Updated "${saved.title}" successfully on server.`);
+      } else {
+        const saved = await AdminApiService.createBanner(bannerPayload);
+        const updatedList = [saved, ...banners];
+        setBanners(updatedList);
+        saveStoredBanners(updatedList);
+        showToast(
+          saved.isActive
+            ? `Created and published "${saved.title}" to Student Dashboard.`
+            : `Created "${saved.title}" as draft.`
+        );
+      }
+    } catch (err: any) {
+      console.warn('Backend banner save failed, falling back to local:', err);
+      const bannerToSave: DashboardBanner = {
+        id: editingId || `banner-${Date.now()}`,
+        title: bannerPayload.title!,
+        tag: bannerPayload.tag!,
+        image: bannerPayload.image!,
+        shortDescription: bannerPayload.shortDescription!,
+        registrationUrl: bannerPayload.registrationUrl,
+        actionText: bannerPayload.actionText,
+        deadlineText: bannerPayload.deadlineText!,
+        startDate: bannerPayload.startDate,
+        endDate: bannerPayload.endDate,
+        venue: bannerPayload.venue,
+        isFeatured: true,
+        status: (bannerPayload.status as any) || 'open',
+        isActive: bannerPayload.isActive !== false,
+        updatedAt: new Date().toISOString(),
+        createdAt: formData.createdAt || new Date().toISOString(),
+      };
+
+      let updatedList: DashboardBanner[];
+      if (editingId) {
+        updatedList = banners.map((b) => (b.id === editingId ? bannerToSave : b));
+        showToast(`Updated "${bannerToSave.title}" locally.`);
+      } else {
+        updatedList = [bannerToSave, ...banners];
+        showToast(`Saved "${bannerToSave.title}" locally.`);
+      }
+
+      saveStoredBanners(updatedList);
+      setBanners(updatedList);
     }
 
-    saveStoredBanners(updatedList);
-    setBanners(updatedList);
     handleCancelEdit();
   };
 
@@ -384,7 +475,7 @@ export const AdminBannerManager: React.FC<AdminBannerManagerProps> = ({
                     {/* Thumbnail */}
                     <div className="w-full sm:w-28 h-28 sm:h-18 rounded-lg overflow-hidden border border-[#e2e6ec] shrink-0 relative bg-slate-900 group">
                       <img
-                        src={banner.image}
+                        src={AdminApiService.resolveFileUrl(banner.image)}
                         alt={banner.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         onError={(e) => {
@@ -889,7 +980,7 @@ export const AdminBannerManager: React.FC<AdminBannerManagerProps> = ({
                 <div
                   className="absolute inset-0 bg-cover bg-center"
                   style={{
-                    backgroundImage: `url('${formData.image || 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=800&q=80'}')`,
+                    backgroundImage: `url('${AdminApiService.resolveFileUrl(formData.image) || 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=800&q=80'}')`,
                   }}
                 />
 

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import type { Notice, Attachment } from '../types/notice';
 import { AttachmentModal } from '../components/notices/AttachmentModal';
+import { StudentApiService } from '../services/studentApi';
 
 interface NoticeDetailViewProps {
   notice: Notice;
@@ -146,9 +147,30 @@ export const NoticeDetailView: React.FC<NoticeDetailViewProps> = ({
                 <p className="font-semibold text-[#00275a]">{notice.fullBody.salutation}</p>
               )}
 
-              <p className="text-[#334155] leading-relaxed">
-                {notice.fullBody?.introduction || notice.content}
-              </p>
+              {/* Render structured introduction if available, otherwise render content */}
+              {notice.fullBody?.introduction ? (
+                /<[a-z][\s\S]*>/i.test(notice.fullBody.introduction) ? (
+                  <div
+                    className="text-[#334155] leading-relaxed space-y-2 [&_p]:mb-2 [&_strong]:font-semibold [&_strong]:text-[#00275a]"
+                    dangerouslySetInnerHTML={{ __html: notice.fullBody.introduction }}
+                  />
+                ) : (
+                  <p className="text-[#334155] leading-relaxed whitespace-pre-line">
+                    {notice.fullBody.introduction}
+                  </p>
+                )
+              ) : notice.content ? (
+                /<[a-z][\s\S]*>/i.test(notice.content) ? (
+                  <div
+                    className="text-[#334155] leading-relaxed space-y-3 [&_p]:mb-2.5 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-1 [&_strong]:font-semibold [&_strong]:text-[#00275a] [&_a]:text-[#003c84] [&_a]:underline"
+                    dangerouslySetInnerHTML={{ __html: notice.content }}
+                  />
+                ) : (
+                  <div className="text-[#334155] leading-relaxed whitespace-pre-line">
+                    {notice.content}
+                  </div>
+                )
+              ) : null}
 
               {/* Structured Sections */}
               {notice.fullBody?.sections?.map((sec, idx) => (
@@ -156,7 +178,7 @@ export const NoticeDetailView: React.FC<NoticeDetailViewProps> = ({
                   <h3 className="text-base sm:text-lg font-bold text-[#003c84] mb-2.5">
                     {sec.title}
                   </h3>
-                  {sec.items && (
+                  {sec.items && sec.items.length > 0 && (
                     <ul className="list-disc pl-5 space-y-2 text-xs sm:text-sm text-[#434751]">
                       {sec.items.map((item, i) => (
                         <li key={i} className="leading-relaxed">
@@ -165,15 +187,29 @@ export const NoticeDetailView: React.FC<NoticeDetailViewProps> = ({
                       ))}
                     </ul>
                   )}
-                  {sec.paragraphs && (
+                  {sec.paragraphs && sec.paragraphs.length > 0 && (
                     <div className="space-y-2 text-xs sm:text-sm text-[#434751]">
                       {sec.paragraphs.map((p, i) => (
-                        <p key={i}>{p}</p>
+                        <p key={i} className="leading-relaxed">{p}</p>
                       ))}
                     </div>
                   )}
                 </div>
               ))}
+
+              {/* Action Instructions / Steps */}
+              {notice.fullBody?.instructions && notice.fullBody.instructions.length > 0 && (
+                <div className="mt-2 bg-[#f8fafc] border border-[#e2e6ec] rounded-lg p-3 sm:p-4">
+                  <h4 className="text-xs sm:text-sm font-bold text-[#00275a] mb-2 uppercase tracking-wide">
+                    Instructions & Action Steps
+                  </h4>
+                  <ol className="list-decimal pl-5 space-y-1.5 text-xs sm:text-sm text-[#434751]">
+                    {notice.fullBody.instructions.map((ins, i) => (
+                      <li key={i} className="leading-relaxed">{ins}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
 
               {/* Institutional Callout Box */}
               {notice.fullBody?.callout && (
@@ -221,8 +257,20 @@ export const NoticeDetailView: React.FC<NoticeDetailViewProps> = ({
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => alert(`Downloading ${att.name}...`)}
-                          className="w-8 h-8 flex items-center justify-center rounded text-[#003c84] hover:bg-[#003c84]/10 transition-colors"
+                          onClick={() => {
+                            if (att.url) {
+                              const link = document.createElement('a');
+                              link.href = StudentApiService.resolveFileUrl(att.url);
+                              link.setAttribute('download', att.name);
+                              link.setAttribute('target', '_blank');
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                            } else {
+                              alert(`Downloading ${att.name}...`);
+                            }
+                          }}
+                          className="w-8 h-8 flex items-center justify-center rounded text-[#003c84] hover:bg-[#003c84]/10 transition-colors cursor-pointer"
                           title="Download Document"
                         >
                           <Download className="w-4 h-4" />

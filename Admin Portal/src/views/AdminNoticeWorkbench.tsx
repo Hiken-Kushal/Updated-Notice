@@ -9,6 +9,7 @@ import {
   time24To12,
 } from '../utils/noticeStorage';
 import { RichTextEditor } from '../components/RichTextEditor';
+import { AdminApiService } from '../services/adminApi';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -142,7 +143,7 @@ const getInitialCreateNoticeState = (): Partial<AdminNotice> => {
     content: '',
     issuedBy: 'Training & Placement Officer',
     targetAudience: 'All Enrolled Students',
-    academicYear: 'AY 2024-25',
+    academicYear: 'AY 2026-27',
     date: displayDate,
     time: displayTime,
     isImportant: false,
@@ -169,6 +170,33 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
   const [itemsPerPage, setItemsPerPage] = useState<number>(5);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [, setIsLoadingNotices] = useState<boolean>(false);
+
+  const loadNotices = async () => {
+    try {
+      setIsLoadingNotices(true);
+      const res = await AdminApiService.getNotices({ limit: 100 });
+      if (res && Array.isArray(res.notices)) {
+        setNotices(res.notices);
+        saveStoredNotices(res.notices);
+        if (res.notices.length > 0) {
+          if (!selectedNoticeId || !res.notices.some((n) => n.id === selectedNoticeId)) {
+            setSelectedNoticeId(res.notices[0]?.id || '');
+          }
+        } else {
+          setSelectedNoticeId('');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load notices from backend, falling back to local storage:', err);
+    } finally {
+      setIsLoadingNotices(false);
+    }
+  };
+
+  useEffect(() => {
+    loadNotices();
+  }, []);
 
   // Dedicated Create Notice Form state
   const [createNoticeData, setCreateNoticeData] = useState<Partial<AdminNotice>>(getInitialCreateNoticeState);
@@ -416,16 +444,29 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
     showToast('All filters reset.');
   };
 
-  // Action: Delete Notice
-  const handleDeleteNotice = (id: string) => {
+  // Action: Delete Notice via Backend
+  const handleDeleteNotice = async (id: string) => {
     if (window.confirm('Are you sure you want to permanently delete this notice?')) {
-      const updated = notices.filter((n) => n.id !== id);
-      setNotices(updated);
-      saveStoredNotices(updated);
-      if (selectedNoticeId === id) {
-        setSelectedNoticeId(updated[0]?.id || '');
+      try {
+        await AdminApiService.deleteNotice(id);
+        const updated = notices.filter((n) => n.id !== id);
+        setNotices(updated);
+        saveStoredNotices(updated);
+        if (selectedNoticeId === id) {
+          setSelectedNoticeId(updated[0]?.id || '');
+        }
+        showToast('Notice deleted successfully.');
+      } catch (err: any) {
+        console.error('Failed to delete notice from backend:', err);
+        // Fallback to local deletion
+        const updated = notices.filter((n) => n.id !== id);
+        setNotices(updated);
+        saveStoredNotices(updated);
+        if (selectedNoticeId === id) {
+          setSelectedNoticeId(updated[0]?.id || '');
+        }
+        showToast('Notice deleted locally.');
       }
-      showToast('Notice deleted successfully.');
     }
   };
 
@@ -450,7 +491,7 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
       date: notice.date,
       time: notice.time,
       targetAudience: notice.targetAudience || 'All Enrolled Students',
-      academicYear: notice.academicYear || 'AY 2024-25',
+      academicYear: notice.academicYear || 'AY 2026-27',
       isImportant: notice.isImportant || false,
       isUrgent: notice.isUrgent || false,
       actionRequired: notice.actionRequired || false,
@@ -466,8 +507,8 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
     }
   };
 
-  // Dedicated Full-Page Create/Edit Notice Save Handler
-  const handleSaveCreate = (e: React.FormEvent) => {
+  // Dedicated Full-Page Create/Edit Notice Save Handler with Backend Persistence
+  const handleSaveCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createNoticeData.title || !createNoticeData.title.trim()) {
       showToast('Please enter a notice title.');
@@ -485,79 +526,135 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
       ? (actionDeadlineDate ? formatDeadlineToDisplay(actionDeadlineDate, actionDeadlineTime) : createNoticeData.actionDeadline?.trim())
       : undefined;
 
-    if (editingNoticeId) {
-      // Update existing notice
-      const updated = notices.map((n) => {
-        if (n.id === editingNoticeId) {
-          return {
-            ...n,
-            title: createNoticeData.title!.trim(),
-            category: createNoticeData.category || n.category,
-            status: 'Published' as const,
-            summary: noticeSummary,
-            content: noticeContent,
-            issuedBy: noticeAuthority,
-            department: createNoticeData.department || n.department || (createNoticeData.category as string),
-            departmentKey: createNoticeData.departmentKey || n.departmentKey || 'admin',
-            date: noticeDate,
-            time: noticeTime,
-            targetAudience: noticeAudience,
-            academicYear: createNoticeData.academicYear || n.academicYear || 'AY 2024-25',
-            isImportant: createNoticeData.isImportant !== undefined ? createNoticeData.isImportant : n.isImportant,
-            isUrgent: createNoticeData.isUrgent !== undefined ? createNoticeData.isUrgent : n.isUrgent,
-            actionRequired: createNoticeData.actionRequired !== undefined ? createNoticeData.actionRequired : n.actionRequired,
-            actionDeadline: finalDeadline,
-            actionDescription: createNoticeData.actionDescription?.trim() || undefined,
-            attachments: createNoticeData.attachments ? [...createNoticeData.attachments] : [],
-          };
-        }
-        return n;
-      });
+    try {
+      if (editingNoticeId) {
+        // Update existing notice on backend
+        const updatePayload: Partial<AdminNotice> = {
+          title: createNoticeData.title!.trim(),
+          category: createNoticeData.category,
+          status: 'Published',
+          summary: noticeSummary,
+          content: noticeContent,
+          issuedBy: noticeAuthority,
+          department: createNoticeData.department || (createNoticeData.category as string),
+          departmentKey: createNoticeData.departmentKey || 'admin',
+          date: noticeDate,
+          time: noticeTime,
+          targetAudience: noticeAudience,
+          academicYear: createNoticeData.academicYear || 'AY 2026-27',
+          isImportant: createNoticeData.isImportant !== undefined ? createNoticeData.isImportant : false,
+          isUrgent: createNoticeData.isUrgent !== undefined ? createNoticeData.isUrgent : false,
+          actionRequired: createNoticeData.actionRequired !== undefined ? createNoticeData.actionRequired : false,
+          actionDeadline: finalDeadline,
+          actionDescription: createNoticeData.actionDescription?.trim() || undefined,
+          attachments: createNoticeData.attachments ? [...createNoticeData.attachments] : [],
+        };
 
-      setNotices(updated);
-      saveStoredNotices(updated);
-      setSelectedNoticeId(editingNoticeId);
-      setEditingNoticeId(null);
-      setCreateNoticeData(getInitialCreateNoticeState());
-      const resetDeadline = parseDeadlineToDateAndTime('');
-      setActionDeadlineDate(resetDeadline.date);
-      setActionDeadlineTime(resetDeadline.time);
-      showToast('Notice updated and published successfully.');
-    } else {
-      // Create new notice
-      const newNotice: AdminNotice = {
-        id: `notice-${Date.now()}`,
-        refNo: `REF-${new Date().getFullYear()}-${Math.floor(Math.random() * 900 + 100)}`,
-        title: createNoticeData.title.trim(),
-        category: createNoticeData.category || 'Academics',
-        status: 'Published',
-        summary: noticeSummary,
-        content: noticeContent,
-        issuedBy: noticeAuthority,
-        department: createNoticeData.department || (createNoticeData.category as string) || 'Academics',
-        departmentKey: createNoticeData.departmentKey || 'admin',
-        date: noticeDate,
-        time: noticeTime,
-        targetAudience: noticeAudience,
-        academicYear: createNoticeData.academicYear || 'AY 2024-25',
-        isImportant: createNoticeData.isImportant || false,
-        isUrgent: createNoticeData.isUrgent || false,
-        actionRequired: createNoticeData.actionRequired || false,
-        actionDeadline: finalDeadline,
-        actionDescription: createNoticeData.actionDescription?.trim() || undefined,
-        attachments: createNoticeData.attachments || [],
-      };
+        const updatedNotice = await AdminApiService.updateNotice(editingNoticeId, updatePayload);
+        const updated = notices.map((n) => (n.id === editingNoticeId ? updatedNotice : n));
+        setNotices(updated);
+        saveStoredNotices(updated);
+        setSelectedNoticeId(editingNoticeId);
+        showToast('Notice updated and published successfully.');
+      } else {
+        // Create new notice on backend
+        const createPayload: Partial<AdminNotice> = {
+          title: createNoticeData.title.trim(),
+          category: createNoticeData.category || 'Academics',
+          status: 'Published',
+          summary: noticeSummary,
+          content: noticeContent,
+          issuedBy: noticeAuthority,
+          department: createNoticeData.department || (createNoticeData.category as string) || 'Academics',
+          departmentKey: createNoticeData.departmentKey || 'admin',
+          date: noticeDate,
+          time: noticeTime,
+          targetAudience: noticeAudience,
+          academicYear: createNoticeData.academicYear || 'AY 2026-27',
+          isImportant: createNoticeData.isImportant || false,
+          isUrgent: createNoticeData.isUrgent || false,
+          actionRequired: createNoticeData.actionRequired || false,
+          actionDeadline: finalDeadline,
+          actionDescription: createNoticeData.actionDescription?.trim() || undefined,
+          attachments: createNoticeData.attachments || [],
+        };
 
-      const updated = [newNotice, ...notices];
-      setNotices(updated);
-      saveStoredNotices(updated);
-      setSelectedNoticeId(newNotice.id);
-      setCreateNoticeData(getInitialCreateNoticeState());
-      const resetDeadline = parseDeadlineToDateAndTime('');
-      setActionDeadlineDate(resetDeadline.date);
-      setActionDeadlineTime(resetDeadline.time);
-      showToast('Notice published successfully.');
+        const createdNotice = await AdminApiService.createNotice(createPayload);
+        const updated = [createdNotice, ...notices];
+        setNotices(updated);
+        saveStoredNotices(updated);
+        setSelectedNoticeId(createdNotice.id);
+        showToast('Notice published successfully.');
+      }
+    } catch (err: any) {
+      console.error('Error saving notice to backend, falling back to local:', err);
+      // Fallback local update
+      if (editingNoticeId) {
+        const updated = notices.map((n) => {
+          if (n.id === editingNoticeId) {
+            return {
+              ...n,
+              title: createNoticeData.title!.trim(),
+              category: createNoticeData.category || n.category,
+              summary: noticeSummary,
+              content: noticeContent,
+              issuedBy: noticeAuthority,
+              department: createNoticeData.department || n.department || (createNoticeData.category as string),
+              departmentKey: createNoticeData.departmentKey || n.departmentKey || 'admin',
+              date: noticeDate,
+              time: noticeTime,
+              targetAudience: noticeAudience,
+              academicYear: createNoticeData.academicYear || n.academicYear || 'AY 2026-27',
+              isImportant: createNoticeData.isImportant !== undefined ? createNoticeData.isImportant : n.isImportant,
+              isUrgent: createNoticeData.isUrgent !== undefined ? createNoticeData.isUrgent : n.isUrgent,
+              actionRequired: createNoticeData.actionRequired !== undefined ? createNoticeData.actionRequired : n.actionRequired,
+              actionDeadline: finalDeadline,
+              actionDescription: createNoticeData.actionDescription?.trim() || undefined,
+              attachments: createNoticeData.attachments ? [...createNoticeData.attachments] : [],
+            };
+          }
+          return n;
+        });
+        setNotices(updated);
+        saveStoredNotices(updated);
+        setSelectedNoticeId(editingNoticeId);
+        showToast('Notice saved locally.');
+      } else {
+        const newNotice: AdminNotice = {
+          id: `notice-${Date.now()}`,
+          refNo: `REF-${new Date().getFullYear()}-${Math.floor(Math.random() * 900 + 100)}`,
+          title: createNoticeData.title.trim(),
+          category: createNoticeData.category || 'Academics',
+          status: 'Published',
+          summary: noticeSummary,
+          content: noticeContent,
+          issuedBy: noticeAuthority,
+          department: createNoticeData.department || (createNoticeData.category as string) || 'Academics',
+          departmentKey: createNoticeData.departmentKey || 'admin',
+          date: noticeDate,
+          time: noticeTime,
+          targetAudience: noticeAudience,
+          academicYear: createNoticeData.academicYear || 'AY 2026-27',
+          isImportant: createNoticeData.isImportant || false,
+          isUrgent: createNoticeData.isUrgent || false,
+          actionRequired: createNoticeData.actionRequired || false,
+          actionDeadline: finalDeadline,
+          actionDescription: createNoticeData.actionDescription?.trim() || undefined,
+          attachments: createNoticeData.attachments || [],
+        };
+        const updated = [newNotice, ...notices];
+        setNotices(updated);
+        saveStoredNotices(updated);
+        setSelectedNoticeId(newNotice.id);
+        showToast('Notice saved locally.');
+      }
     }
+
+    setEditingNoticeId(null);
+    setCreateNoticeData(getInitialCreateNoticeState());
+    const resetDeadline = parseDeadlineToDateAndTime('');
+    setActionDeadlineDate(resetDeadline.date);
+    setActionDeadlineTime(resetDeadline.time);
 
     if (onNavigateTab) {
       onNavigateTab('dashboard');
@@ -579,45 +676,56 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
     }
   };
 
-  const processUploadedFiles = (files: FileList | File[]) => {
+  const processUploadedFiles = async (files: FileList | File[]) => {
     if (!files || files.length === 0) return;
+    const fileArray = Array.from(files);
 
-    const newAttachments: Array<{ name: string; size: string; type: 'pdf' | 'excel' | 'doc' | 'image' }> = [];
+    try {
+      showToast('Uploading attachments to server...');
+      const uploaded = await AdminApiService.uploadNoticeAttachments(fileArray);
+      setCreateNoticeData((prev) => ({
+        ...prev,
+        attachments: [...(prev.attachments || []), ...uploaded],
+      }));
+      showToast(`Attached ${uploaded.length} document${uploaded.length > 1 ? 's' : ''}`);
+    } catch (err: any) {
+      console.warn('Backend upload failed, keeping local metadata:', err);
+      const newAttachments: Array<{ name: string; size: string; type: 'pdf' | 'excel' | 'doc' | 'image' }> = [];
+      fileArray.forEach((file) => {
+        let fileType: 'pdf' | 'excel' | 'doc' | 'image' = 'pdf';
+        const nameLower = file.name.toLowerCase();
+        if (nameLower.endsWith('.xls') || nameLower.endsWith('.xlsx') || nameLower.endsWith('.csv')) {
+          fileType = 'excel';
+        } else if (nameLower.endsWith('.doc') || nameLower.endsWith('.docx')) {
+          fileType = 'doc';
+        } else if (
+          nameLower.endsWith('.jpg') ||
+          nameLower.endsWith('.jpeg') ||
+          nameLower.endsWith('.png') ||
+          nameLower.endsWith('.webp')
+        ) {
+          fileType = 'image';
+        }
 
-    Array.from(files).forEach((file) => {
-      let fileType: 'pdf' | 'excel' | 'doc' | 'image' = 'pdf';
-      const nameLower = file.name.toLowerCase();
-      if (nameLower.endsWith('.xls') || nameLower.endsWith('.xlsx') || nameLower.endsWith('.csv')) {
-        fileType = 'excel';
-      } else if (nameLower.endsWith('.doc') || nameLower.endsWith('.docx')) {
-        fileType = 'doc';
-      } else if (
-        nameLower.endsWith('.jpg') ||
-        nameLower.endsWith('.jpeg') ||
-        nameLower.endsWith('.png') ||
-        nameLower.endsWith('.webp')
-      ) {
-        fileType = 'image';
-      }
+        const sizeStr =
+          file.size > 1024 * 1024
+            ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+            : `${Math.round(file.size / 1024)} KB`;
 
-      const sizeStr =
-        file.size > 1024 * 1024
-          ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
-          : `${Math.round(file.size / 1024)} KB`;
-
-      newAttachments.push({
-        name: file.name,
-        size: sizeStr,
-        type: fileType,
+        newAttachments.push({
+          name: file.name,
+          size: sizeStr,
+          type: fileType,
+        });
       });
-    });
 
-    setCreateNoticeData((prev) => ({
-      ...prev,
-      attachments: [...(prev.attachments || []), ...newAttachments],
-    }));
+      setCreateNoticeData((prev) => ({
+        ...prev,
+        attachments: [...(prev.attachments || []), ...newAttachments],
+      }));
 
-    showToast(`Attached ${newAttachments.length} document${newAttachments.length > 1 ? 's' : ''}`);
+      showToast(`Attached ${newAttachments.length} document${newAttachments.length > 1 ? 's' : ''}`);
+    }
   };
 
   const handleFileAttachmentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1598,6 +1706,18 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
                                 <span className="font-medium text-[#1c1b1b] truncate">{file.name}</span>
                                 <span className="text-[10px] text-[#5c6470] shrink-0">({file.size})</span>
                               </div>
+                              {file.url && (
+                                <a
+                                  href={AdminApiService.resolveFileUrl(file.url)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  download
+                                  className="text-[#003c84] hover:text-[#00275a] p-1 rounded hover:bg-[#003c84]/10 transition-colors shrink-0"
+                                  title={`Download ${file.name}`}
+                                >
+                                  <span className="material-symbols-outlined text-[16px]">download</span>
+                                </a>
+                              )}
                             </div>
                           ))}
                         </div>

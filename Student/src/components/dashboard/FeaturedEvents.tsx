@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import type { FeaturedEvent } from '../../types/notice';
 import { mockFeaturedEvents } from '../../data/mockNotices';
+import { StudentApiService } from '../../services/studentApi';
 
 const BANNER_STORAGE_KEY = 'icem_student_dashboard_banners';
 const BANNER_CHANNEL_NAME = 'icem_banner_sync_channel';
@@ -44,12 +45,23 @@ export const FeaturedEvents: React.FC<FeaturedEventsProps> = ({
   const [showModal, setShowModal] = useState(false);
   const [registeredEvents, setRegisteredEvents] = useState<Record<string, boolean>>({});
 
-  // Sync with Admin Portal banner updates via localStorage & BroadcastChannel
-  const loadActiveBanners = useCallback(() => {
+  // Sync with Backend and Admin Portal banner updates via localStorage & BroadcastChannel
+  const loadActiveBanners = useCallback(async () => {
     if (propEvents && propEvents.length > 0) {
       setLiveEvents(propEvents);
       return;
     }
+
+    try {
+      const banners = await StudentApiService.getBanners();
+      if (banners && banners.length > 0) {
+        setLiveEvents(banners);
+        return;
+      }
+    } catch (err) {
+      console.warn('Backend getBanners failed in Student Portal, using local storage:', err);
+    }
+
     if (typeof window === 'undefined') return;
     try {
       const stored = localStorage.getItem(BANNER_STORAGE_KEY);
@@ -147,7 +159,7 @@ export const FeaturedEvents: React.FC<FeaturedEventsProps> = ({
         <div
           className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
           style={{
-            backgroundImage: `url('${currentEvent.image}')`,
+            backgroundImage: `url('${StudentApiService.resolveFileUrl(currentEvent.image)}')`,
           }}
         />
 
@@ -234,7 +246,7 @@ export const FeaturedEvents: React.FC<FeaturedEventsProps> = ({
             <div className="relative h-40 bg-[#00275a] p-4 text-white flex flex-col justify-end overflow-hidden">
               <div
                 className="absolute inset-0 bg-cover bg-center opacity-40"
-                style={{ backgroundImage: `url('${currentEvent.image}')` }}
+                style={{ backgroundImage: `url('${StudentApiService.resolveFileUrl(currentEvent.image)}')` }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#00275a] via-[#00275a]/70 to-transparent" />
 

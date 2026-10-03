@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, Download, FileText, FileSpreadsheet, Image as ImageIcon, ExternalLink } from 'lucide-react';
 import type { Attachment } from '../../types/notice';
+import { StudentApiService } from '../../services/studentApi';
 
 interface AttachmentModalProps {
   attachment: Attachment | null;
@@ -64,17 +65,31 @@ export const AttachmentModal: React.FC<AttachmentModalProps> = ({
           <div className="flex flex-wrap items-center justify-center gap-3 w-full">
             <button
               onClick={() => {
-                alert(`Downloading: ${attachment.name}`);
+                if (attachment.url) {
+                  const link = document.createElement('a');
+                  link.href = StudentApiService.resolveFileUrl(attachment.url);
+                  link.setAttribute('download', attachment.name);
+                  link.setAttribute('target', '_blank');
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                } else {
+                  alert(`Downloading: ${attachment.name}`);
+                }
               }}
-              className="px-5 py-2.5 bg-[#003c84] hover:bg-[#43ccd1] text-white text-xs font-bold uppercase tracking-wider rounded-sm transition-colors flex items-center gap-2 shadow-sm"
+              className="px-5 py-2.5 bg-[#003c84] hover:bg-[#43ccd1] text-white text-xs font-bold uppercase tracking-wider rounded-sm transition-colors flex items-center gap-2 shadow-sm cursor-pointer"
             >
               <Download className="w-4 h-4" /> Download Original ({attachment.size})
             </button>
             <button
               onClick={() => {
-                window.open('#', '_blank');
+                if (attachment.url) {
+                  window.open(StudentApiService.resolveFileUrl(attachment.url), '_blank');
+                } else {
+                  window.open('#', '_blank');
+                }
               }}
-              className="px-4 py-2.5 bg-white border border-[#e2e6ec] hover:bg-[#f5f7fa] text-[#1c1b1b] text-xs font-semibold rounded-sm transition-colors flex items-center gap-2"
+              className="px-4 py-2.5 bg-white border border-[#e2e6ec] hover:bg-[#f5f7fa] text-[#1c1b1b] text-xs font-semibold rounded-sm transition-colors flex items-center gap-2 cursor-pointer"
             >
               <ExternalLink className="w-4 h-4 text-[#737782]" /> Open in Full Viewer
             </button>

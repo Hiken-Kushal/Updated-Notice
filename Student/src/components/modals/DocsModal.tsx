@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   FileText, 
@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import type { CollegeDocument } from '../../types/notice';
 import { mockCollegeDocuments } from '../../data/mockNotices';
+import { StudentApiService } from '../../services/studentApi';
 
 interface DocsModalProps {
   isOpen: boolean;
@@ -21,14 +22,29 @@ interface DocsModalProps {
 export const DocsModal: React.FC<DocsModalProps> = ({
   isOpen,
   onClose,
-  documents = mockCollegeDocuments,
+  documents: propDocs,
 }) => {
+  const [docsList, setDocsList] = useState<CollegeDocument[]>(propDocs || mockCollegeDocuments);
   const [searchTerm, setSearchTerm] = useState('');
   const [downloadToast, setDownloadToast] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (isOpen) {
+      StudentApiService.getDocuments()
+        .then((data) => {
+          if (data && data.length > 0) {
+            setDocsList(data);
+          }
+        })
+        .catch((err) => {
+          console.warn('Could not fetch documents from backend, using fallback:', err);
+        });
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
-  const filteredDocs = documents.filter((doc) => {
+  const filteredDocs = docsList.filter((doc) => {
     if (!searchTerm.trim()) return true;
     const query = searchTerm.toLowerCase();
     return (
@@ -40,6 +56,16 @@ export const DocsModal: React.FC<DocsModalProps> = ({
 
   const handleDownload = (doc: CollegeDocument) => {
     setDownloadToast(`Downloading ${doc.title}...`);
+    if (doc.downloadUrl) {
+      const url = StudentApiService.resolveFileUrl(doc.downloadUrl);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', doc.title);
+      link.setAttribute('target', '_blank');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
     setTimeout(() => {
       setDownloadToast(null);
     }, 2500);

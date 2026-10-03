@@ -12,6 +12,8 @@ import {
   BellRing
 } from 'lucide-react';
 
+import { AdminApiService } from '../services/adminApi';
+
 interface AdminLoginViewProps {
   onBackToStudentPortal: () => void;
   onLoginSuccess?: () => void;
@@ -57,7 +59,7 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
 
   const fillDemoCredentials = () => {
     setUsername('admin');
-    setPassword('admin123');
+    setPassword('Admin@123');
     setUsernameError('');
     setPasswordError('');
     setAuthError('');
@@ -66,7 +68,7 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoading || isSuccess) return;
 
@@ -98,58 +100,29 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
 
     if (hasError) return;
 
-    // Begin subtle authenticating state
     setIsLoading(true);
 
-    setTimeout(() => {
-      // Validate credentials (supporting standard admin credentials)
-      const validUsers = ['admin', 'icemadmin', 'administrator', 'faculty'];
-      const isValidUser = validUsers.includes(trimmedUser.toLowerCase());
-      const isValidPass =
-        trimmedPass === 'admin123' ||
-        trimmedPass === 'admin' ||
-        trimmedPass === 'icem@2024' ||
-        trimmedPass === 'password';
+    try {
+      await AdminApiService.login(trimmedUser, trimmedPass);
+      setIsLoading(false);
+      setIsSuccess(true);
 
-      if (isValidUser && isValidPass) {
-        // Successful authentication
-        setIsLoading(false);
-        setIsSuccess(true);
-
-        try {
-          localStorage.setItem('icem_admin_auth', 'true');
-          localStorage.setItem(
-            'icem_admin_user',
-            JSON.stringify({
-              username: trimmedUser,
-              role: 'College Administrator',
-              authenticatedAt: new Date().toISOString(),
-            })
-          );
-          sessionStorage.setItem('icem_admin_authenticated', 'true');
-        } catch {
-          // ignore localStorage security exceptions
+      setTimeout(() => {
+        if (onLoginSuccess) {
+          onLoginSuccess();
+        } else {
+          const adminUrl = getAdminPortalUrl();
+          window.location.href = adminUrl;
         }
-
-        // Navigate to existing Admin Dashboard
-        setTimeout(() => {
-          if (onLoginSuccess) {
-            onLoginSuccess();
-          } else {
-            const adminUrl = getAdminPortalUrl();
-            window.location.href = adminUrl;
-          }
-        }, 800);
-      } else {
-        // Invalid credentials
-        setIsLoading(false);
-        setAuthError('Invalid username or password. Please try again.');
-        if (passwordInputRef.current) {
-          passwordInputRef.current.focus();
-          passwordInputRef.current.select();
-        }
+      }, 700);
+    } catch (err: any) {
+      setIsLoading(false);
+      setAuthError(err.message || 'Invalid username or password. Please try again.');
+      if (passwordInputRef.current) {
+        passwordInputRef.current.focus();
+        passwordInputRef.current.select();
       }
-    }, 600);
+    }
   };
 
   return (
@@ -398,7 +371,7 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
               {/* Quick Demo Helper for review */}
               <div className="mt-6 pt-4 border-t border-[#e2e6ec] flex items-center justify-between text-[11px] text-[#5c6470]">
                 <span>
-                  Demo: <strong className="text-[#00275a]">admin</strong> / <strong className="text-[#00275a]">admin123</strong>
+                  Demo: <strong className="text-[#00275a]">admin</strong> / <strong className="text-[#00275a]">Admin@123</strong>
                 </span>
                 <button
                   type="button"

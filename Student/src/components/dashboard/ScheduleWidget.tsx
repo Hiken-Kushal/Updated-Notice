@@ -1,12 +1,27 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, FileText, HelpCircle, BookOpen, ExternalLink } from 'lucide-react';
 import { mockScheduleItems } from '../../data/mockNotices';
+import { StudentApiService } from '../../services/studentApi';
+import type { ScheduleItem } from '../../types/notice';
 
 interface ScheduleWidgetProps {
   onNavigateView: (view: string) => void;
 }
 
 export const ScheduleWidget: React.FC<ScheduleWidgetProps> = ({ onNavigateView }) => {
+  const [schedule, setSchedule] = useState<ScheduleItem[]>(mockScheduleItems);
+
+  useEffect(() => {
+    StudentApiService.getTimetable()
+      .then((items) => {
+        if (items && items.length > 0) {
+          setSchedule(items);
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not load timetable from backend, using fallback:', err);
+      });
+  }, []);
   return (
     <div className="flex flex-col gap-3.5">
       {/* Quick Actions (Slimmer) */}
@@ -47,7 +62,7 @@ export const ScheduleWidget: React.FC<ScheduleWidgetProps> = ({ onNavigateView }
         </div>
 
         <ul className="flex flex-col divide-y divide-[#e2e6ec]">
-          {mockScheduleItems.map((item) => {
+          {schedule.map((item) => {
             const isBreak = item.type === 'break';
             return (
               <li

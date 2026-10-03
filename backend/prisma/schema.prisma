@@ -1,0 +1,235 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  STUDENT
+}
+
+enum NoticeStatus {
+  PUBLISHED
+  ARCHIVED
+}
+
+enum FileType {
+  PDF
+  EXCEL
+  IMAGE
+  DOC
+}
+
+enum BannerStatus {
+  OPEN
+  CLOSING_SOON
+  CLOSED
+}
+
+enum ScheduleType {
+  LECTURE
+  LAB
+  BREAK
+}
+
+model User {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  email        String   @unique
+  passwordHash String
+  fullName     String
+  role         Role     @default(STUDENT)
+  department   String?
+  academicYear String?
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relationships
+  refreshTokens    RefreshToken[]
+  authoredNotices  Notice[]                @relation("NoticeAuthor")
+  acknowledgements NoticeAcknowledgement[]
+  bookmarks        NoticeBookmark[]
+  authoredBanners  BannerEvent[]           @relation("BannerAuthor")
+  uploadedDocs     CollegeDocument[]       @relation("DocUploader")
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Notice {
+  id                String       @id @default(uuid())
+  refNo             String       @unique
+  title             String
+  category          String
+  status            NoticeStatus @default(PUBLISHED)
+  summary           String
+  content           String // HTML string from RichTextEditor
+  fullBody          Json? // Structured JSON body for Student UI
+  issuedBy          String
+  department        String
+  departmentKey     String // Key e.g. 'tpo', 'exam', 'comp', 'it', 'admin', 'all', 'ce', 'mech', 'civil'
+  targetAudience    String
+  academicYear      String?      @default("AY 2026-27")
+  date              String // Formatted display date (e.g. "Oct 24, 2024")
+  time              String? // Formatted display time (e.g. "11:42 AM")
+  isImportant       Boolean      @default(false)
+  isUrgent          Boolean      @default(false)
+  actionRequired    Boolean      @default(false)
+  actionDeadline    String?
+  actionDescription String?
+
+  createdById String?
+  createdBy   User?   @relation("NoticeAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  attachments      NoticeAttachment[]
+  acknowledgements NoticeAcknowledgement[]
+  bookmarks        NoticeBookmark[]
+  linkedBanners    BannerEvent[]
+
+  @@index([category])
+  @@index([departmentKey])
+  @@index([status])
+  @@index([isImportant])
+  @@index([isUrgent])
+  @@index([actionRequired])
+  @@map("notices")
+}
+
+model NoticeAttachment {
+  id           String   @id @default(uuid())
+  noticeId     String
+  notice       Notice   @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  name         String
+  originalName String
+  fileUrl      String
+  fileType     FileType @default(PDF)
+  fileSize     String
+  mimeType     String?
+  createdAt    DateTime @default(now())
+
+  @@index([noticeId])
+  @@map("notice_attachments")
+}
+
+model NoticeAcknowledgement {
+  id             String   @id @default(uuid())
+  noticeId       String
+  userId         String
+  acknowledgedAt DateTime @default(now())
+
+  notice Notice @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([noticeId, userId])
+  @@map("notice_acknowledgements")
+}
+
+model NoticeBookmark {
+  id        String   @id @default(uuid())
+  noticeId  String
+  userId    String
+  createdAt DateTime @default(now())
+
+  notice Notice @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([noticeId, userId])
+  @@map("notice_bookmarks")
+}
+
+model BannerEvent {
+  id               String       @id @default(uuid())
+  title            String
+  tag              String
+  category         String?      @default("College Events")
+  image            String
+  shortDescription String
+  longDescription  String?
+  registrationUrl  String?
+  actionText       String?      @default("Register")
+  deadlineText     String
+  startDate        String?
+  endDate          String?
+  time             String?
+  venue            String?
+  isFeatured       Boolean      @default(true)
+  status           BannerStatus @default(OPEN)
+  isActive         Boolean      @default(true)
+
+  noticeId String?
+  notice   Notice? @relation(fields: [noticeId], references: [id], onDelete: SetNull)
+
+  createdById String?
+  createdBy   User?   @relation("BannerAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([status])
+  @@map("banner_events")
+}
+
+model CollegeDocument {
+  id          String   @id @default(uuid())
+  title       String
+  category    String
+  fileType    FileType @default(PDF)
+  fileSize    String
+  description String?
+  downloadUrl String
+  lastUpdated String?
+
+  uploadedById String?
+  uploadedBy   User?   @relation("DocUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("college_documents")
+}
+
+model ScheduleItem {
+  id          String       @id @default(uuid())
+  time        String
+  period      String // 'AM' | 'PM'
+  subject     String
+  details     String
+  type        ScheduleType @default(LECTURE)
+  colorBorder String?      @default("primary")
+  department  String?      @default("ce")
+  dayOfWeek   String?      @default("Tuesday")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("schedule_items")
+}
+
+model NewsletterSubscription {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  isActive     Boolean  @default(true)
+  subscribedAt DateTime @default(now())
+
+  @@map("newsletter_subscriptions")
+}

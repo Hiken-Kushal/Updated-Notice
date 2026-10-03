@@ -1,21 +1,32 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AdminSidebar } from './components/AdminSidebar';
 import { AdminHeader } from './components/AdminHeader';
 import { AdminNoticeWorkbench } from './views/AdminNoticeWorkbench';
 import { AdminBannerManager } from './views/AdminBannerManager';
 import { AdminLoginView } from './views/AdminLoginView';
 
+import { AdminApiService } from './services/adminApi';
+
 export const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    try {
-      return (
-        localStorage.getItem('icem_admin_auth') === 'true' ||
-        sessionStorage.getItem('icem_admin_authenticated') === 'true'
-      );
-    } catch {
-      return false;
-    }
+    return AdminApiService.isAuthenticated();
   });
+
+  useEffect(() => {
+    if (AdminApiService.isAuthenticated()) {
+      AdminApiService.getMe()
+        .then(() => setIsAuthenticated(true))
+        .catch(() => {
+          AdminApiService.clearAuth();
+          setIsAuthenticated(false);
+        });
+    }
+  }, []);
+
+  const handleLogout = async () => {
+    await AdminApiService.logout();
+    setIsAuthenticated(false);
+  };
 
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -109,6 +120,7 @@ export const App: React.FC = () => {
         onSwitchToStudentPortal={() => {
           window.location.href = getStudentPortalUrl();
         }}
+        onLogout={handleLogout}
       />
 
       {/* Top Header */}

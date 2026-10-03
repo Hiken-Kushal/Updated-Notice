@@ -1,35 +1,76 @@
 export type NoticeCategory =
   | 'Academic'
+  | 'Academics'
   | 'Examination'
   | 'Exam'
   | 'Placement'
+  | 'Placement & Training'
   | 'Events'
+  | 'Events & Cultural'
   | 'Administrative'
+  | 'Administration'
   | 'Admin'
   | 'General'
   | 'Sports'
   | 'Library';
 
-export type NavCategoryKey = 'all' | 'exam' | 'placement' | 'general' | 'events';
+export type NavCategoryKey = 'all' | 'exam' | 'placement' | 'general' | 'events' | 'academic';
 
 export const matchesNavCategory = (noticeCategory: string, categoryKey: string): boolean => {
   if (!categoryKey || categoryKey === 'all') return true;
   const cat = (noticeCategory || '').toLowerCase().trim();
   const key = categoryKey.toLowerCase().trim();
 
+  // Examination / Exam
   if (key === 'exam' || key === 'examination') {
-    return cat === 'exam' || cat === 'examination';
+    return cat.includes('exam');
   }
-  if (key === 'placement') {
-    return cat === 'placement';
+
+  // Placement & Training -> placement
+  if (key === 'placement' || key === 'placement & training') {
+    return cat.includes('placement');
   }
-  if (key === 'events' || key === 'culture' || key === 'cultural') {
-    return cat === 'events' || cat === 'sports' || cat === 'cultural';
+
+  // Events & Cultural -> events
+  if (
+    key === 'events' ||
+    key === 'event' ||
+    key === 'culture' ||
+    key === 'cultural' ||
+    key === 'events & cultural' ||
+    key === 'sports'
+  ) {
+    return (
+      cat.includes('event') ||
+      cat.includes('cultural') ||
+      cat.includes('culture') ||
+      cat.includes('sport')
+    );
   }
-  if (key === 'general') {
-    return cat === 'general' || cat === 'administrative' || cat === 'admin' || cat === 'academic' || cat === 'library';
+
+  // Academics -> academic
+  if (key === 'academic' || key === 'academics') {
+    return cat.includes('acad');
   }
-  return cat === key;
+
+  // Administration -> general
+  if (
+    key === 'general' ||
+    key === 'administration' ||
+    key === 'administrative' ||
+    key === 'admin'
+  ) {
+    return (
+      cat.includes('admin') ||
+      cat.includes('general') ||
+      cat.includes('library') ||
+      cat.includes('acad') ||
+      cat === 'administration' ||
+      cat === 'administrative'
+    );
+  }
+
+  return cat === key || cat.includes(key);
 };
 
 

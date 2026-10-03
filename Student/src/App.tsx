@@ -8,17 +8,79 @@ import { NoticesView } from './views/NoticesView';
 import { NoticeDetailView } from './views/NoticeDetailView';
 import { TimetableView } from './views/SecondaryViews';
 import { AdminLoginView } from './views/AdminLoginView';
-import { mockNotices, mockActionItems } from './data/mockNotices';
 import { matchesNavCategory } from './types/notice';
-import type { Notice } from './types/notice';
+import type { Notice, ActionItem } from './types/notice';
+import { StudentApiService } from './services/studentApi';
 
 export const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<string>('dashboard');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [selectedNoticeId, setSelectedNoticeId] = useState<string>('notice-1');
+  const [selectedNoticeId, setSelectedNoticeId] = useState<string>('');
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
-  const [notices, setNotices] = useState<Notice[]>(mockNotices);
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const [actionItems, setActionItems] = useState<ActionItem[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
+
+  const loadNotices = useCallback(async () => {
+    try {
+      const data = await StudentApiService.getNotices({ limit: 100 });
+      if (Array.isArray(data)) {
+        setNotices(data);
+        if (data.length > 0) {
+          if (!selectedNoticeId || !data.some((n) => n.id === selectedNoticeId)) {
+            setSelectedNoticeId(data[0].id);
+          }
+        } else {
+          setSelectedNoticeId('');
+        }
+      }
+    } catch (err) {
+      console.warn('Backend notices fetch failed in Student Portal:', err);
+    }
+  }, [selectedNoticeId]);
+
+  const loadActionItems = useCallback(async () => {
+    try {
+      const items = await StudentApiService.getActionRequired();
+      if (Array.isArray(items)) {
+        setActionItems(items);
+      }
+    } catch (err) {
+      console.warn('Backend action items fetch failed in Student Portal:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadNotices();
+    loadActionItems();
+
+    const handleNoticesUpdate = () => {
+      loadNotices();
+      loadActionItems();
+    };
+
+    window.addEventListener('icem-notices-update', handleNoticesUpdate);
+    window.addEventListener('storage', handleNoticesUpdate);
+
+    let channel: BroadcastChannel | null = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        channel = new BroadcastChannel('icem_notices_channel');
+        channel.onmessage = () => {
+          loadNotices();
+          loadActionItems();
+        };
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    return () => {
+      window.removeEventListener('icem-notices-update', handleNoticesUpdate);
+      window.removeEventListener('storage', handleNoticesUpdate);
+      if (channel) channel.close();
+    };
+  }, [loadNotices, loadActionItems]);
 
   // Calculate live counts for the 4 sidebar notice categories + events
   const categoryCounts = useMemo(() => {
@@ -106,7 +168,7 @@ export const App: React.FC = () => {
   };
 
   // Find active selected notice for detail view
-  const activeNotice = notices.find((n) => n.id === selectedNoticeId) || notices[0];
+  const activeNotice = notices.find((n) => n.id === selectedNoticeId) || (notices.length > 0 ? notices[0] : null);
 
   // Back button handler from notice detail
   const handleBackFromDetail = () => {
@@ -118,17 +180,27 @@ export const App: React.FC = () => {
   };
 
   // Toggle acknowledge state
-  const handleToggleAcknowledge = (id: string) => {
+  const handleToggleAcknowledge = async (id: string) => {
     setNotices((prev) =>
       prev.map((n) => (n.id === id ? { ...n, acknowledged: !n.acknowledged } : n))
     );
+    try {
+      await StudentApiService.toggleAcknowledge(id);
+    } catch (err) {
+      console.warn('Could not sync acknowledgement with backend:', err);
+    }
   };
 
   // Toggle bookmark state
-  const handleToggleBookmark = (id: string) => {
+  const handleToggleBookmark = async (id: string) => {
     setNotices((prev) =>
       prev.map((n) => (n.id === id ? { ...n, bookmarked: !n.bookmarked } : n))
     );
+    try {
+      await StudentApiService.toggleBookmark(id);
+    } catch (err) {
+      console.warn('Could not sync bookmark with backend:', err);
+    }
   };
 
   // Global Search trigger
@@ -196,7 +268,7 @@ export const App: React.FC = () => {
         {/* Top Action Required Strip */}
         {(currentView === 'dashboard' || currentView === 'notices' || currentView === 'events') && (
           <ActionRequiredBanner
-            items={mockActionItems}
+            items={actionItems}
             onSelectNotice={handleSelectNotice}
           />
         )}
@@ -215,7 +287,7 @@ export const App: React.FC = () => {
                   navigateTo(view);
                 }
               }}
-              onRefreshData={() => setNotices([...mockNotices])}
+              onRefreshData={loadNotices}
               searchTerm={searchTerm}
               onClearSearch={() => setSearchTerm('')}
             />
@@ -231,15 +303,28 @@ export const App: React.FC = () => {
             />
           )}
 
-          {currentView === 'notice-detail' && activeNotice && (
-            <NoticeDetailView
-              notice={activeNotice}
-              allNotices={notices}
-              onBack={handleBackFromDetail}
-              onSelectNotice={handleSelectNotice}
-              onToggleAcknowledge={handleToggleAcknowledge}
-              onToggleBookmark={handleToggleBookmark}
-            />
+          {currentView === 'notice-detail' && (
+            activeNotice ? (
+              <NoticeDetailView
+                notice={activeNotice}
+                allNotices={notices}
+                onBack={handleBackFromDetail}
+                onSelectNotice={handleSelectNotice}
+                onToggleAcknowledge={handleToggleAcknowledge}
+                onToggleBookmark={handleToggleBookmark}
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center p-12 text-center text-[#5c6470] max-w-md mx-auto my-12 bg-white rounded-xl border border-[#e2e6ec] shadow-2xs">
+                <p className="text-base font-semibold text-[#1c1b1b] mb-1">Notice Not Found</p>
+                <p className="text-xs mb-4">The requested circular may have been removed, archived, or is unavailable.</p>
+                <button
+                  onClick={handleBackFromDetail}
+                  className="px-4 py-2 bg-[#003c84] text-white rounded text-xs font-semibold hover:bg-[#00275a] transition-colors cursor-pointer"
+                >
+                  Back to Notices
+                </button>
+              </div>
+            )
           )}
 
           {currentView === 'timetable' && (

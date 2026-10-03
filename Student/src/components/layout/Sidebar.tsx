@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   AlertCircle
 } from 'lucide-react';
+import { StudentApiService } from '../../services/studentApi';
 
 interface SidebarProps {
   currentView: string;
@@ -64,7 +65,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return '';
   };
 
-  const handleSubscribe = (e: React.FormEvent) => {
+  const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
     const error = validateEmail(email);
     if (error) {
@@ -73,6 +74,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
     setEmailError('');
     setIsSubscribed(true);
+    try {
+      await StudentApiService.subscribeNewsletter({ email: email.trim() });
+    } catch (err) {
+      console.warn('Backend newsletter subscription error:', err);
+    }
   };
 
   const isNoticesView = currentView === 'dashboard' || currentView === 'notices' || currentView === 'notice-detail' || currentView === 'events';
