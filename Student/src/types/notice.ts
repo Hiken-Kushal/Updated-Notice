@@ -104,15 +104,23 @@ export interface Notice {
   urgent?: boolean;
   actionRequired?: boolean;
   actionDeadline?: string;
+  actionDescription?: string;
   targetAudience: string;
   department: string;
-  departmentKey?: 'ce' | 'it' | 'mech' | 'civil' | 'all';
+  departmentKey?: string;
+  refNo?: string;
   issuedBy: string;
   attachments?: Attachment[];
   acknowledged?: boolean;
   bookmarked?: boolean;
   facultyAvatar?: string;
   accentColor?: 'warning' | 'primary' | 'secondary' | 'neutral' | 'error' | 'info';
+  status?: string;
+  academicYear?: string;
+  isImportant?: boolean;
+  isUrgent?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface RecentUpdate {

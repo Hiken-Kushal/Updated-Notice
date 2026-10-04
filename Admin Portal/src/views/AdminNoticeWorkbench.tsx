@@ -1,8 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type { AdminNotice, AdminFilterState, AdminNoticeCategory } from '../types/adminNotice';
 import {
-  getStoredNotices,
-  saveStoredNotices,
   isoToDisplayDate,
   displayDateToIso,
   time12To24,
@@ -162,14 +160,12 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
   onNavigateTab,
   onStatsChange,
 }) => {
-  const [notices, setNotices] = useState<AdminNotice[]>(() => getStoredNotices());
-  const [selectedNoticeId, setSelectedNoticeId] = useState<string>(() => {
-    const initial = getStoredNotices();
-    return initial[0]?.id || '';
-  });
+  const [notices, setNotices] = useState<AdminNotice[]>([]);
+  const [selectedNoticeId, setSelectedNoticeId] = useState<string>('');
   const [itemsPerPage, setItemsPerPage] = useState<number>(5);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'success' | 'error'>('success');
   const [, setIsLoadingNotices] = useState<boolean>(false);
 
   const loadNotices = async () => {
@@ -178,7 +174,6 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
       const res = await AdminApiService.getNotices({ limit: 100 });
       if (res && Array.isArray(res.notices)) {
         setNotices(res.notices);
-        saveStoredNotices(res.notices);
         if (res.notices.length > 0) {
           if (!selectedNoticeId || !res.notices.some((n) => n.id === selectedNoticeId)) {
             setSelectedNoticeId(res.notices[0]?.id || '');
@@ -187,14 +182,18 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
           setSelectedNoticeId('');
         }
       }
-    } catch (err) {
-      console.error('Failed to load notices from backend, falling back to local storage:', err);
+    } catch (err: any) {
+      console.error('Failed to load notices from backend:', err);
+      showToast(err.message || 'Failed to load notices from backend.', 'error');
     } finally {
       setIsLoadingNotices(false);
     }
   };
 
   useEffect(() => {
+    try {
+      localStorage.removeItem('icem_notices_v1');
+    } catch {}
     loadNotices();
   }, []);
 
@@ -225,23 +224,6 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
   const [isDraggingFile, setIsDraggingFile] = useState<boolean>(false);
   const [calYear, setCalYear] = useState<number>(() => new Date().getFullYear());
   const [calMonth, setCalMonth] = useState<number>(() => new Date().getMonth());
-
-  // Listen for storage / cross-tab updates
-  useEffect(() => {
-    const handleStorageUpdate = (e: any) => {
-      if (e.detail) {
-        setNotices(e.detail);
-      } else {
-        setNotices(getStoredNotices());
-      }
-    };
-    window.addEventListener('icem-notices-update', handleStorageUpdate);
-    window.addEventListener('storage', handleStorageUpdate);
-    return () => {
-      window.removeEventListener('icem-notices-update', handleStorageUpdate);
-      window.removeEventListener('storage', handleStorageUpdate);
-    };
-  }, []);
 
   // Update selected category from prop
   useEffect(() => {
@@ -343,9 +325,10 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
   }, [notices, calYear, calMonth]);
 
   // Show temporary toast notification
-  const showToast = (msg: string) => {
+  const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
+    setToastType(type);
+    setTimeout(() => setToastMessage(null), 4000);
   };
 
   // Filtered notices calculation
@@ -441,7 +424,7 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
     if (onNavigateTab) {
       onNavigateTab('dashboard', 'all');
     }
-    showToast('All filters reset.');
+    showToast('All filters reset.', 'success');
   };
 
   // Action: Delete Notice via Backend
@@ -451,21 +434,13 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
         await AdminApiService.deleteNotice(id);
         const updated = notices.filter((n) => n.id !== id);
         setNotices(updated);
-        saveStoredNotices(updated);
         if (selectedNoticeId === id) {
           setSelectedNoticeId(updated[0]?.id || '');
         }
-        showToast('Notice deleted successfully.');
+        showToast('Notice deleted successfully.', 'success');
       } catch (err: any) {
         console.error('Failed to delete notice from backend:', err);
-        // Fallback to local deletion
-        const updated = notices.filter((n) => n.id !== id);
-        setNotices(updated);
-        saveStoredNotices(updated);
-        if (selectedNoticeId === id) {
-          setSelectedNoticeId(updated[0]?.id || '');
-        }
-        showToast('Notice deleted locally.');
+        showToast(err.message || 'Failed to delete notice on server.', 'error');
       }
     }
   };
@@ -511,12 +486,17 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
   const handleSaveCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createNoticeData.title || !createNoticeData.title.trim()) {
-      showToast('Please enter a notice title.');
+      showToast('Please enter a notice title.', 'error');
       return;
     }
 
-    const noticeSummary = createNoticeData.summary?.trim() || createNoticeData.content?.replace(/<[^>]+>/g, '').trim() || '';
-    const noticeContent = createNoticeData.content?.trim() || createNoticeData.summary?.trim() || '';
+    const noticeSummary =
+      createNoticeData.summary?.trim() ||
+      createNoticeData.content?.replace(/<[^>]+>/g, ' ').trim() ||
+      createNoticeData.title.trim();
+    const noticeContent =
+      createNoticeData.content?.trim() ||
+      noticeSummary;
     const noticeDate = createNoticeData.date || isoToDisplayDate();
     const noticeTime = createNoticeData.time || new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     const noticeAuthority = createNoticeData.issuedBy?.trim() || 'Training & Placement Officer';
@@ -553,9 +533,8 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
         const updatedNotice = await AdminApiService.updateNotice(editingNoticeId, updatePayload);
         const updated = notices.map((n) => (n.id === editingNoticeId ? updatedNotice : n));
         setNotices(updated);
-        saveStoredNotices(updated);
         setSelectedNoticeId(editingNoticeId);
-        showToast('Notice updated and published successfully.');
+        showToast('Notice updated successfully.', 'success');
       } else {
         // Create new notice on backend
         const createPayload: Partial<AdminNotice> = {
@@ -582,84 +561,24 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
         const createdNotice = await AdminApiService.createNotice(createPayload);
         const updated = [createdNotice, ...notices];
         setNotices(updated);
-        saveStoredNotices(updated);
         setSelectedNoticeId(createdNotice.id);
-        showToast('Notice published successfully.');
+        showToast('Notice published successfully.', 'success');
+      }
+
+      setEditingNoticeId(null);
+      setCreateNoticeData(getInitialCreateNoticeState());
+      const resetDeadline = parseDeadlineToDateAndTime('');
+      setActionDeadlineDate(resetDeadline.date);
+      setActionDeadlineTime(resetDeadline.time);
+
+      if (onNavigateTab) {
+        onNavigateTab('dashboard');
+      } else {
+        window.location.hash = '#/dashboard';
       }
     } catch (err: any) {
-      console.error('Error saving notice to backend, falling back to local:', err);
-      // Fallback local update
-      if (editingNoticeId) {
-        const updated = notices.map((n) => {
-          if (n.id === editingNoticeId) {
-            return {
-              ...n,
-              title: createNoticeData.title!.trim(),
-              category: createNoticeData.category || n.category,
-              summary: noticeSummary,
-              content: noticeContent,
-              issuedBy: noticeAuthority,
-              department: createNoticeData.department || n.department || (createNoticeData.category as string),
-              departmentKey: createNoticeData.departmentKey || n.departmentKey || 'admin',
-              date: noticeDate,
-              time: noticeTime,
-              targetAudience: noticeAudience,
-              academicYear: createNoticeData.academicYear || n.academicYear || 'AY 2026-27',
-              isImportant: createNoticeData.isImportant !== undefined ? createNoticeData.isImportant : n.isImportant,
-              isUrgent: createNoticeData.isUrgent !== undefined ? createNoticeData.isUrgent : n.isUrgent,
-              actionRequired: createNoticeData.actionRequired !== undefined ? createNoticeData.actionRequired : n.actionRequired,
-              actionDeadline: finalDeadline,
-              actionDescription: createNoticeData.actionDescription?.trim() || undefined,
-              attachments: createNoticeData.attachments ? [...createNoticeData.attachments] : [],
-            };
-          }
-          return n;
-        });
-        setNotices(updated);
-        saveStoredNotices(updated);
-        setSelectedNoticeId(editingNoticeId);
-        showToast('Notice saved locally.');
-      } else {
-        const newNotice: AdminNotice = {
-          id: `notice-${Date.now()}`,
-          refNo: `REF-${new Date().getFullYear()}-${Math.floor(Math.random() * 900 + 100)}`,
-          title: createNoticeData.title.trim(),
-          category: createNoticeData.category || 'Academics',
-          status: 'Published',
-          summary: noticeSummary,
-          content: noticeContent,
-          issuedBy: noticeAuthority,
-          department: createNoticeData.department || (createNoticeData.category as string) || 'Academics',
-          departmentKey: createNoticeData.departmentKey || 'admin',
-          date: noticeDate,
-          time: noticeTime,
-          targetAudience: noticeAudience,
-          academicYear: createNoticeData.academicYear || 'AY 2026-27',
-          isImportant: createNoticeData.isImportant || false,
-          isUrgent: createNoticeData.isUrgent || false,
-          actionRequired: createNoticeData.actionRequired || false,
-          actionDeadline: finalDeadline,
-          actionDescription: createNoticeData.actionDescription?.trim() || undefined,
-          attachments: createNoticeData.attachments || [],
-        };
-        const updated = [newNotice, ...notices];
-        setNotices(updated);
-        saveStoredNotices(updated);
-        setSelectedNoticeId(newNotice.id);
-        showToast('Notice saved locally.');
-      }
-    }
-
-    setEditingNoticeId(null);
-    setCreateNoticeData(getInitialCreateNoticeState());
-    const resetDeadline = parseDeadlineToDateAndTime('');
-    setActionDeadlineDate(resetDeadline.date);
-    setActionDeadlineTime(resetDeadline.time);
-
-    if (onNavigateTab) {
-      onNavigateTab('dashboard');
-    } else {
-      window.location.hash = '#/dashboard';
+      console.error('Failed to save notice to backend:', err);
+      showToast(err.message || 'Failed to save notice to backend.', 'error');
     }
   };
 
@@ -771,8 +690,20 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
     <div className="w-full flex flex-col gap-5">
       {/* Toast Alert */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#00275a] text-white px-4 py-3 rounded-lg shadow-xl flex items-center gap-3 border border-[#d8e2ff]/30 animate-in fade-in slide-in-from-bottom-3 duration-200">
-          <span className="material-symbols-outlined text-emerald-400 text-[20px]">check_circle</span>
+        <div
+          className={`fixed bottom-6 right-6 z-50 text-white px-4 py-3 rounded-lg shadow-xl flex items-center gap-3 border animate-in fade-in slide-in-from-bottom-3 duration-200 ${
+            toastType === 'error'
+              ? 'bg-[#991b1b] border-[#fca5a5]/30'
+              : 'bg-[#00275a] border-[#d8e2ff]/30'
+          }`}
+        >
+          <span
+            className={`material-symbols-outlined text-[20px] ${
+              toastType === 'error' ? 'text-[#fca5a5]' : 'text-emerald-400'
+            }`}
+          >
+            {toastType === 'error' ? 'error' : 'check_circle'}
+          </span>
           <span className="text-sm font-medium">{toastMessage}</span>
           <button
             onClick={() => setToastMessage(null)}

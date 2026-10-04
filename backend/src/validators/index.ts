@@ -32,7 +32,7 @@ export const noticeCreateSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
   category: z.string().min(1, 'Category is required'),
   status: z.enum(['PUBLISHED', 'ARCHIVED', 'Published', 'Archived']).default('PUBLISHED'),
-  summary: z.string().min(1, 'Summary is required'),
+  summary: z.string().optional().default(''),
   content: z.string().optional().default(''),
   fullBody: z.any().optional(),
   issuedBy: z.string().min(1, 'Issuing authority is required'),
@@ -54,7 +54,7 @@ export const noticeCreateSchema = z.object({
       z.object({
         name: z.string(),
         size: z.string(),
-        type: z.enum(['pdf', 'excel', 'image', 'doc']),
+        type: z.string(),
         url: z.string().optional(),
       })
     )

@@ -53,33 +53,6 @@ export const App: React.FC = () => {
   useEffect(() => {
     loadNotices();
     loadActionItems();
-
-    const handleNoticesUpdate = () => {
-      loadNotices();
-      loadActionItems();
-    };
-
-    window.addEventListener('icem-notices-update', handleNoticesUpdate);
-    window.addEventListener('storage', handleNoticesUpdate);
-
-    let channel: BroadcastChannel | null = null;
-    try {
-      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-        channel = new BroadcastChannel('icem_notices_channel');
-        channel.onmessage = () => {
-          loadNotices();
-          loadActionItems();
-        };
-      }
-    } catch (e) {
-      // ignore
-    }
-
-    return () => {
-      window.removeEventListener('icem-notices-update', handleNoticesUpdate);
-      window.removeEventListener('storage', handleNoticesUpdate);
-      if (channel) channel.close();
-    };
   }, [loadNotices, loadActionItems]);
 
   // Calculate live counts for the 4 sidebar notice categories + events

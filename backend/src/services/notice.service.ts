@@ -221,14 +221,20 @@ export class NoticeService {
     const isImportant = data.isImportant !== undefined ? Boolean(data.isImportant) : Boolean(data.important);
     const isUrgent = data.isUrgent !== undefined ? Boolean(data.isUrgent) : Boolean(data.urgent);
 
+    const finalSummary =
+      (data.summary && data.summary.trim()) ||
+      (data.content && data.content.replace(/<[^>]+>/g, ' ').trim()) ||
+      data.title.trim();
+    const finalContent = (data.content && data.content.trim()) || finalSummary;
+
     const notice = await prisma.notice.create({
       data: {
         refNo,
         title: data.title.trim(),
         category: data.category,
         status,
-        summary: data.summary,
-        content: data.content || '',
+        summary: finalSummary,
+        content: finalContent,
         fullBody: data.fullBody || null,
         issuedBy: data.issuedBy,
         department: data.department,
@@ -304,14 +310,23 @@ export class NoticeService {
       };
     }
 
+    const updatedSummary =
+      data.summary !== undefined
+        ? (data.summary.trim() || (data.content && data.content.replace(/<[^>]+>/g, ' ').trim()) || existing.summary)
+        : existing.summary;
+    const updatedContent =
+      data.content !== undefined
+        ? (data.content.trim() || updatedSummary)
+        : existing.content;
+
     const updated = await prisma.notice.update({
       where: { id },
       data: {
         title: data.title !== undefined ? data.title.trim() : existing.title,
         category: data.category !== undefined ? data.category : existing.category,
         status,
-        summary: data.summary !== undefined ? data.summary : existing.summary,
-        content: data.content !== undefined ? data.content : existing.content,
+        summary: updatedSummary,
+        content: updatedContent,
         fullBody: data.fullBody !== undefined ? data.fullBody : existing.fullBody,
         issuedBy: data.issuedBy !== undefined ? data.issuedBy : existing.issuedBy,
         department: data.department !== undefined ? data.department : existing.department,

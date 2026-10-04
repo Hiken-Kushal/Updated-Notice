@@ -132,7 +132,7 @@ export class AdminApiService {
 
   private static async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit & { _isRetry?: boolean } = {}
   ): Promise<ApiResponse<T>> {
     const url = `${API_BASE_URL}${endpoint}`;
     const headers: Record<string, string> = {
@@ -157,11 +157,42 @@ export class AdminApiService {
       const data: ApiResponse<T> = await response.json();
 
       if (!response.ok || !data.success) {
-        // If unauthorized and we have a refresh token, could attempt refresh, or clear auth
-        if (response.status === 401) {
+        // If unauthorized and we have a refresh token, attempt token refresh once
+        if (response.status === 401 && !options._isRetry) {
+          const refreshToken = this.getRefreshToken();
+          if (refreshToken) {
+            try {
+              const refreshRes = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refreshToken }),
+              });
+              const refreshData = await refreshRes.json();
+              if (refreshRes.ok && refreshData.success && refreshData.data?.tokens?.accessToken) {
+                const newAccessToken = refreshData.data.tokens.accessToken;
+                localStorage.setItem(this.tokenKey, newAccessToken);
+                if (refreshData.data.tokens.refreshToken) {
+                  localStorage.setItem(this.refreshTokenKey, refreshData.data.tokens.refreshToken);
+                }
+                const newHeaders = { ...headers, Authorization: `Bearer ${newAccessToken}` };
+                return await this.request<T>(endpoint, {
+                  ...options,
+                  headers: newHeaders,
+                  _isRetry: true,
+                });
+              }
+            } catch (refreshErr) {
+              console.warn('Token refresh failed:', refreshErr);
+            }
+          }
           this.clearAuth();
         }
-        const errorMsg = data.message || `Request failed with status ${response.status}`;
+
+        let errorMsg = data.message || `Request failed with status ${response.status}`;
+        if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+          const detail = data.errors.map((e: any) => e.message || `${e.field}: invalid`).join(', ');
+          errorMsg = `${errorMsg}: ${detail}`;
+        }
         throw new Error(errorMsg);
       }
 
