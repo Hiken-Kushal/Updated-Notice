@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { UploadController } from '../controllers/upload.controller';
-import { authenticate, requireRole } from '../middlewares/auth.middleware';
+import { authenticate, optionalAuth, requireRole } from '../middlewares/auth.middleware';
 import {
   uploadNoticeAttachments,
   uploadBannerImage,
@@ -9,7 +9,7 @@ import {
 
 const router = Router();
 
-// Notice file attachments (multiple)
+// Notice file attachments upload (multiple files, admin only)
 router.post(
   '/attachments',
   authenticate,
@@ -17,6 +17,11 @@ router.post(
   uploadNoticeAttachments.array('files', 10),
   UploadController.uploadNoticeAttachments
 );
+
+// Attachment download & access endpoint (generates signed URL / redirects)
+router.get('/attachments/access', optionalAuth, UploadController.getAttachmentAccessUrl);
+router.post('/attachments/access', optionalAuth, UploadController.getAttachmentAccessUrl);
+router.get('/attachments/download', optionalAuth, UploadController.getAttachmentAccessUrl);
 
 // Single banner graphic
 router.post(

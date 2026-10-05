@@ -1,9 +1,14 @@
 import { Router } from 'express';
 import { NoticeController } from '../controllers/notice.controller';
 import { StudentController } from '../controllers/student.controller';
+import { UploadController } from '../controllers/upload.controller';
 import { authenticate, optionalAuth, requireRole } from '../middlewares/auth.middleware';
 
 const router = Router();
+
+// Attachment download / access alias routes (before /:id)
+router.get('/attachments/access', optionalAuth, UploadController.getAttachmentAccessUrl);
+router.get('/attachments/download', optionalAuth, UploadController.getAttachmentAccessUrl);
 
 // Public / student notice browsing (optionalAuth attaches student if logged in)
 router.get('/', optionalAuth, NoticeController.getNotices);

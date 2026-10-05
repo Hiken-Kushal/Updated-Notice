@@ -1,37 +1,5 @@
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
-import crypto from 'crypto';
 import { env } from '../config/env';
-
-// Ensure base upload directories exist
-const uploadDirs = [
-  path.resolve(env.UPLOAD_DIR),
-  path.resolve(env.UPLOAD_DIR, 'notices'),
-  path.resolve(env.UPLOAD_DIR, 'banners'),
-  path.resolve(env.UPLOAD_DIR, 'documents'),
-];
-
-uploadDirs.forEach((dir) => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-});
-
-// Configure disk storage
-const createStorage = (subfolder: 'notices' | 'banners' | 'documents') => {
-  return multer.diskStorage({
-    destination: (_req, _file, cb) => {
-      const dest = path.resolve(env.UPLOAD_DIR, subfolder);
-      cb(null, dest);
-    },
-    filename: (_req, file, cb) => {
-      const uniqueSuffix = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}`;
-      const ext = path.extname(file.originalname).toLowerCase();
-      cb(null, `${uniqueSuffix}${ext}`);
-    },
-  });
-};
 
 // Allowed MIME types
 const allowedAttachmentMimes = [
@@ -48,8 +16,12 @@ const allowedAttachmentMimes = [
 
 const allowedImageMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
 
+// In-memory storage: file buffers are held in memory (req.file.buffer / req.files[i].buffer)
+// for direct upload to Supabase Storage without writing to the local filesystem.
+const memoryStorage = multer.memoryStorage();
+
 export const uploadNoticeAttachments = multer({
-  storage: createStorage('notices'),
+  storage: memoryStorage,
   limits: {
     fileSize: env.MAX_FILE_SIZE_MB * 1024 * 1024,
   },
@@ -57,13 +29,13 @@ export const uploadNoticeAttachments = multer({
     if (allowedAttachmentMimes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error(`Unsupported file type: ${file.mimetype}. Allowed: PDF, Word, Excel, Images.`));
+      cb(new Error(`Unsupported file type: ${file.mimetype}. Allowed: PDF, Word, Excel, CSV, Images.`));
     }
   },
 });
 
 export const uploadBannerImage = multer({
-  storage: createStorage('banners'),
+  storage: memoryStorage,
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB max for banner graphics
   },
@@ -77,7 +49,7 @@ export const uploadBannerImage = multer({
 });
 
 export const uploadDocumentFile = multer({
-  storage: createStorage('documents'),
+  storage: memoryStorage,
   limits: {
     fileSize: env.MAX_FILE_SIZE_MB * 1024 * 1024,
   },

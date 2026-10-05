@@ -23,5 +23,8 @@ export const env = {
   SMTP_USER: process.env.SMTP_USER || '',
   SMTP_PASS: process.env.SMTP_PASS || '',
   EMAIL_FROM: process.env.EMAIL_FROM || '"ICEM Smart Notice Portal" <no-reply@icem.ac.in>',
+  SUPABASE_URL: process.env.SUPABASE_URL || 'https://xhxxcautdoyozbrejdsm.supabase.co',
+  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+  SUPABASE_STORAGE_BUCKET: process.env.SUPABASE_STORAGE_BUCKET || 'notice-attachments',
 };
 

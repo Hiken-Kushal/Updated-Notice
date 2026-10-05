@@ -1,5 +1,45 @@
 import { prisma } from '../config/prisma';
 import { Prisma } from '@prisma/client';
+import { supabase } from '../config/supabase';
+import { env } from '../config/env';
+
+/**
+ * Checks if a fileUrl represents a Supabase Storage path (as opposed to legacy local /uploads/ or external HTTP)
+ */
+export function isSupabaseStoragePath(pathOrUrl?: string | null): boolean {
+  if (!pathOrUrl) return false;
+  if (pathOrUrl.startsWith('/uploads/')) return false;
+  if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) return false;
+  if (pathOrUrl.startsWith('data:') || pathOrUrl.startsWith('blob:')) return false;
+  return true;
+}
+
+/**
+ * Normalizes input from frontend into a clean storage path (e.g. notices/123-file.pdf)
+ * Strips access URL query parameters if the frontend passed a download endpoint URL.
+ */
+export function normalizeStoragePath(rawPathOrUrl?: string | null): string {
+  if (!rawPathOrUrl) return '';
+  const trimmed = rawPathOrUrl.trim();
+
+  // If passed as download/access URL (e.g. /api/v1/upload/attachments/access?path=notices%2F...)
+  if (trimmed.includes('access?path=') || trimmed.includes('download?path=')) {
+    try {
+      const urlObj = new URL(trimmed, 'http://localhost');
+      const pathParam = urlObj.searchParams.get('path');
+      if (pathParam) {
+        return decodeURIComponent(pathParam);
+      }
+    } catch {
+      const match = trimmed.match(/[?&]path=([^&]+)/);
+      if (match && match[1]) {
+        return decodeURIComponent(match[1]);
+      }
+    }
+  }
+
+  return trimmed;
+}
 
 export interface NoticeQueryParams {
   search?: string;
@@ -29,14 +69,24 @@ export class NoticeService {
       ? notice.acknowledgements && notice.acknowledgements.length > 0
       : false;
 
-    const formattedAttachments = (notice.attachments || []).map((att: any) => ({
-      id: att.id,
-      name: att.name,
-      originalName: att.originalName,
-      size: att.fileSize || att.size,
-      type: att.fileType ? att.fileType.toLowerCase() : 'pdf',
-      url: att.fileUrl,
-    }));
+    const formattedAttachments = (notice.attachments || []).map((att: any) => {
+      let downloadUrl = att.fileUrl;
+      // If it's a Supabase storage path (not an absolute URL and not a legacy local /uploads/ URL)
+      if (isSupabaseStoragePath(att.fileUrl)) {
+        downloadUrl = `/api/v1/upload/attachments/access?path=${encodeURIComponent(att.fileUrl)}`;
+      }
+
+      return {
+        id: att.id,
+        name: att.name,
+        originalName: att.originalName,
+        size: att.fileSize || att.size,
+        type: att.fileType ? att.fileType.toLowerCase() : 'pdf',
+        url: downloadUrl,
+        fileUrl: downloadUrl,
+        storagePath: att.fileUrl,
+      };
+    });
 
     return {
       id: notice.id,
@@ -227,49 +277,70 @@ export class NoticeService {
       data.title.trim();
     const finalContent = (data.content && data.content.trim()) || finalSummary;
 
-    const notice = await prisma.notice.create({
-      data: {
-        refNo,
-        title: data.title.trim(),
-        category: data.category,
-        status,
-        summary: finalSummary,
-        content: finalContent,
-        fullBody: data.fullBody || null,
-        issuedBy: data.issuedBy,
-        department: data.department,
-        departmentKey: data.departmentKey || 'admin',
-        targetAudience: data.targetAudience || 'All Enrolled Students',
-        academicYear: data.academicYear || 'AY 2026-27',
-        date: data.date || displayDate,
-        time: data.time || displayTime,
-        isImportant,
-        isUrgent,
-        actionRequired: Boolean(data.actionRequired),
-        actionDeadline: data.actionDeadline || null,
-        actionDescription: data.actionDescription || null,
-        createdById: authorId || null,
-        attachments: {
-          create: (data.attachments || []).map((att: any) => ({
-            name: att.name,
-            originalName: att.originalName || att.name,
-            fileUrl: att.url || att.fileUrl || '',
-            fileType: (att.type || 'PDF').toUpperCase(),
-            fileSize: att.size || att.fileSize || '1.0 MB',
-            mimeType: att.mimeType || null,
-          })),
-        },
-      },
-      include: {
-        attachments: true,
-      },
-    });
+    // Extract new Supabase storage paths for rollback in case of partial database failure
+    const newStoragePaths = (data.attachments || [])
+      .map((att: any) => normalizeStoragePath(att.storagePath || att.fileUrl || att.url || ''))
+      .filter((p: string) => isSupabaseStoragePath(p));
 
-    return this.normalizeNotice(notice);
+    try {
+      const notice = await prisma.notice.create({
+        data: {
+          refNo,
+          title: data.title.trim(),
+          category: data.category,
+          status,
+          summary: finalSummary,
+          content: finalContent,
+          fullBody: data.fullBody || null,
+          issuedBy: data.issuedBy,
+          department: data.department,
+          departmentKey: data.departmentKey || 'admin',
+          targetAudience: data.targetAudience || 'FY-BTECH',
+          academicYear: data.academicYear || 'AY 2026-27',
+          date: data.date || displayDate,
+          time: data.time || displayTime,
+          isImportant,
+          isUrgent,
+          actionRequired: Boolean(data.actionRequired),
+          actionDeadline: data.actionDeadline || null,
+          actionDescription: data.actionDescription || null,
+          createdById: authorId || null,
+          attachments: {
+            create: (data.attachments || []).map((att: any) => ({
+              name: att.name,
+              originalName: att.originalName || att.name,
+              fileUrl: normalizeStoragePath(att.storagePath || att.fileUrl || att.url || ''),
+              fileType: (att.type || 'PDF').toUpperCase(),
+              fileSize: att.size || att.fileSize || '1.0 MB',
+              mimeType: att.mimeType || null,
+            })),
+          },
+        },
+        include: {
+          attachments: true,
+        },
+      });
+
+      return this.normalizeNotice(notice);
+    } catch (error: any) {
+      // Partial failure safety: Clean up newly uploaded Supabase objects if database save failed
+      if (newStoragePaths.length > 0) {
+        try {
+          console.warn(`[NoticeService] DB insertion failed. Cleaning up ${newStoragePaths.length} orphaned Supabase storage objects.`);
+          await supabase.storage.from(env.SUPABASE_STORAGE_BUCKET).remove(newStoragePaths);
+        } catch (cleanupErr: any) {
+          console.error('[NoticeService] Failed to clean up Supabase storage objects after DB error:', cleanupErr.message || cleanupErr);
+        }
+      }
+      throw error;
+    }
   }
 
   static async updateNotice(id: string, data: any) {
-    const existing = await prisma.notice.findUnique({ where: { id } });
+    const existing = await prisma.notice.findUnique({
+      where: { id },
+      include: { attachments: true },
+    });
     if (!existing) {
       throw new Error('Notice not found');
     }
@@ -294,15 +365,39 @@ export class NoticeService {
         : 'PUBLISHED'
       : existing.status;
 
-    // If attachments are passed, recreate them
+    // If attachments are passed, recreate them and clean up replaced storage objects
     let attachmentsUpdate: any = undefined;
     if (data.attachments && Array.isArray(data.attachments)) {
+      const newPaths = new Set(
+        data.attachments.map((att: any) =>
+          normalizeStoragePath(att.storagePath || att.fileUrl || att.url || '')
+        )
+      );
+
+      // Identify old storage paths that are NOT in the new attachments list
+      const pathsToRemove = (existing.attachments || [])
+        .map((att) => att.fileUrl)
+        .filter((p: string) => isSupabaseStoragePath(p) && !newPaths.has(p));
+
+      if (pathsToRemove.length > 0) {
+        try {
+          const { error: removeError } = await supabase.storage
+            .from(env.SUPABASE_STORAGE_BUCKET)
+            .remove(pathsToRemove);
+          if (removeError) {
+            console.error('[Supabase Storage] Failed to remove replaced attachments:', removeError.message);
+          }
+        } catch (err: any) {
+          console.error('[Supabase Storage] Error removing replaced attachments from storage:', err.message || err);
+        }
+      }
+
       attachmentsUpdate = {
         deleteMany: {},
         create: data.attachments.map((att: any) => ({
           name: att.name,
           originalName: att.originalName || att.name,
-          fileUrl: att.url || att.fileUrl || '',
+          fileUrl: normalizeStoragePath(att.storagePath || att.fileUrl || att.url || ''),
           fileType: (att.type || 'PDF').toUpperCase(),
           fileSize: att.size || att.fileSize || '1.0 MB',
           mimeType: att.mimeType || null,
@@ -374,9 +469,30 @@ export class NoticeService {
   }
 
   static async deleteNotice(id: string) {
-    const existing = await prisma.notice.findUnique({ where: { id } });
+    const existing = await prisma.notice.findUnique({
+      where: { id },
+      include: { attachments: true },
+    });
     if (!existing) {
       throw new Error('Notice not found');
+    }
+
+    // Identify Supabase storage paths associated with this notice
+    const storagePaths = (existing.attachments || [])
+      .map((att) => att.fileUrl)
+      .filter((fileUrl: string) => isSupabaseStoragePath(fileUrl));
+
+    if (storagePaths.length > 0) {
+      try {
+        const { error: removeError } = await supabase.storage
+          .from(env.SUPABASE_STORAGE_BUCKET)
+          .remove(storagePaths);
+        if (removeError) {
+          console.error('[Supabase Storage] Failed to delete objects during notice deletion:', removeError.message);
+        }
+      } catch (err: any) {
+        console.error('[Supabase Storage] Error deleting storage files on notice delete:', err.message || err);
+      }
     }
 
     await prisma.notice.delete({ where: { id } });

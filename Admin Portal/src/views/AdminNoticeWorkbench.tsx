@@ -36,16 +36,22 @@ const ISSUING_AUTHORITIES = [
 ];
 
 const TARGET_AUDIENCES = [
-  'All Enrolled Students',
-  'All Engineering Students',
-  'BE Final Yr (All Branches)',
-  'TE & BE Students',
-  'SE & TE Students',
-  'FE, SE, TE, BE Students',
-  'TE (Comp, IT)',
-  'All Branch Students',
-  'Faculty & Students',
-  'All Students & Staff',
+  'FY-BTECH',
+  'SY-BTECH',
+  'TY-BTECH',
+  'FINAL YEAR ENGG',
+  'SY-IMCA',
+  'TY-IMCA',
+  'SY-IMBA',
+  'TY-IMBA',
+  'FY-MCA',
+  'SY-MCA',
+  'FY-MBA',
+  'SY-MBA',
+  'FY-MTECH',
+  'ST-MTECH',
+  'ALL STUDENTS',
+  'ALL STUDENTS & FACULTY',
 ];
 
 const normalizeNoticeDateToKey = (dateStr: string): string => {
@@ -140,7 +146,7 @@ const getInitialCreateNoticeState = (): Partial<AdminNotice> => {
     summary: '',
     content: '',
     issuedBy: 'Training & Placement Officer',
-    targetAudience: 'All Enrolled Students',
+    targetAudience: 'FY-BTECH',
     academicYear: 'AY 2026-27',
     date: displayDate,
     time: displayTime,
@@ -465,7 +471,7 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
       departmentKey: notice.departmentKey,
       date: notice.date,
       time: notice.time,
-      targetAudience: notice.targetAudience || 'All Enrolled Students',
+      targetAudience: notice.targetAudience || 'FY-BTECH',
       academicYear: notice.academicYear || 'AY 2026-27',
       isImportant: notice.isImportant || false,
       isUrgent: notice.isUrgent || false,
@@ -500,7 +506,7 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
     const noticeDate = createNoticeData.date || isoToDisplayDate();
     const noticeTime = createNoticeData.time || new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     const noticeAuthority = createNoticeData.issuedBy?.trim() || 'Training & Placement Officer';
-    const noticeAudience = createNoticeData.targetAudience?.trim() || 'All Enrolled Students';
+    const noticeAudience = createNoticeData.targetAudience?.trim() || 'FY-BTECH';
 
     const finalDeadline = createNoticeData.actionRequired
       ? (actionDeadlineDate ? formatDeadlineToDisplay(actionDeadlineDate, actionDeadlineTime) : createNoticeData.actionDeadline?.trim())
@@ -845,7 +851,7 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
                   </label>
                   <div className="relative">
                     <select
-                      value={createNoticeData.targetAudience || 'All Enrolled Students'}
+                      value={createNoticeData.targetAudience || 'FY-BTECH'}
                       onChange={(e) => setCreateNoticeData((prev) => ({ ...prev, targetAudience: e.target.value }))}
                       className="w-full px-3.5 py-2.5 bg-white text-[#1c1b1b] text-sm border border-[#e2e6ec] rounded-lg focus:border-[#003c84] focus:ring-1 focus:ring-[#003c84] focus:outline-none appearance-none cursor-pointer pr-8"
                     >
@@ -932,127 +938,7 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
               </div>
             </div>
 
-            {/* Card 2: Student Action & Deadlines */}
-            <div className="bg-white rounded-xl border border-[#e2e6ec] p-4 sm:p-6 shadow-xs flex flex-col gap-4">
-              <div className="flex items-center gap-2.5 pb-3 border-b border-[#e2e6ec]">
-                <div className="w-8 h-8 rounded-lg bg-[#ea580c]/10 text-[#ea580c] flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-[20px]">alarm</span>
-                </div>
-                <div>
-                  <h2 className="text-sm sm:text-base font-bold text-[#00275a]">Student Action &amp; Deadlines</h2>
-                  <p className="text-xs text-[#5c6470]">Flag this notice if students must complete a task before a cutoff date.</p>
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-[#f8fafc] rounded-lg border border-[#e2e6ec]">
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={createNoticeData.actionRequired || false}
-                    onChange={(e) => setCreateNoticeData((prev) => ({ ...prev, actionRequired: e.target.checked }))}
-                    className="accent-[#003c84] h-4 w-4 mt-0.5 rounded cursor-pointer shrink-0"
-                  />
-                  <div className="flex flex-col">
-                    <span className="text-xs sm:text-sm font-bold text-[#1c1b1b]">
-                      Action Required / Mandatory Student Submission
-                    </span>
-                    <span className="text-[11px] text-[#5c6470]">
-                      Displays deadline warning badge on student notices.
-                    </span>
-                  </div>
-                </label>
-
-                <div className="flex items-center gap-4 pl-7 sm:pl-0">
-                  <label className="flex items-center gap-2 text-xs text-[#1c1b1b] cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={createNoticeData.isUrgent || false}
-                      onChange={(e) => setCreateNoticeData((prev) => ({ ...prev, isUrgent: e.target.checked }))}
-                      className="accent-[#ef4444] h-3.5 w-3.5 rounded cursor-pointer"
-                    />
-                    <span className="font-semibold text-[#ef4444]">Mark as Urgent</span>
-                  </label>
-                  <label className="flex items-center gap-2 text-xs text-[#1c1b1b] cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={createNoticeData.isImportant || false}
-                      onChange={(e) => setCreateNoticeData((prev) => ({ ...prev, isImportant: e.target.checked }))}
-                      className="accent-[#00275a] h-3.5 w-3.5 rounded cursor-pointer"
-                    />
-                    <span className="font-semibold text-[#00275a]">Important</span>
-                  </label>
-                </div>
-              </div>
-
-              {createNoticeData.actionRequired && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1 animate-in fade-in duration-200">
-                  {/* Action Deadline (Calendar Date + Time Picker) */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold uppercase tracking-wider text-[#434751] flex items-center justify-between">
-                      <span className="flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[15px] text-[#ea580c]">event_upcoming</span>
-                        <span>Action Deadline</span>
-                      </span>
-                      <span className="text-[11px] font-semibold text-[#ea580c]">
-                        {formatDeadlineToDisplay(actionDeadlineDate, actionDeadlineTime)}
-                      </span>
-                    </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <div className="relative">
-                        <input
-                          type="date"
-                          required={createNoticeData.actionRequired}
-                          value={actionDeadlineDate}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setActionDeadlineDate(val);
-                            setCreateNoticeData((prev) => ({
-                              ...prev,
-                              actionDeadline: formatDeadlineToDisplay(val, actionDeadlineTime),
-                            }));
-                          }}
-                          className="w-full px-3 py-2 bg-white text-[#1c1b1b] text-xs sm:text-sm border border-[#e2e6ec] rounded-lg focus:border-[#003c84] focus:ring-1 focus:ring-[#003c84] focus:outline-none cursor-pointer"
-                          title="Select deadline date"
-                        />
-                      </div>
-                      <div className="relative">
-                        <input
-                          type="time"
-                          required={createNoticeData.actionRequired}
-                          value={actionDeadlineTime}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setActionDeadlineTime(val);
-                            setCreateNoticeData((prev) => ({
-                              ...prev,
-                              actionDeadline: formatDeadlineToDisplay(actionDeadlineDate, val),
-                            }));
-                          }}
-                          className="w-full px-3 py-2 bg-white text-[#1c1b1b] text-xs sm:text-sm border border-[#e2e6ec] rounded-lg focus:border-[#003c84] focus:ring-1 focus:ring-[#003c84] focus:outline-none cursor-pointer"
-                          title="Select deadline time"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Action Instruction */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold uppercase tracking-wider text-[#434751]">
-                      Action Instruction
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Mandatory submission for hall ticket clearance."
-                      value={createNoticeData.actionDescription || ''}
-                      onChange={(e) => setCreateNoticeData((prev) => ({ ...prev, actionDescription: e.target.value }))}
-                      className="w-full px-3.5 py-2.5 bg-white text-[#1c1b1b] text-sm border border-[#e2e6ec] rounded-lg focus:border-[#003c84] focus:ring-1 focus:ring-[#003c84] focus:outline-none transition-colors"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Card 3: Attachments */}
+            {/* Card 2: Attachments */}
             <div className="bg-white rounded-xl border border-[#e2e6ec] p-4 sm:p-6 shadow-xs flex flex-col gap-4">
               <div className="flex items-center gap-2.5 pb-3 border-b border-[#e2e6ec]">
                 <div className="w-8 h-8 rounded-lg bg-[#003c84]/10 text-[#003c84] flex items-center justify-center shrink-0">

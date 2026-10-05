@@ -9,10 +9,7 @@ import {
   Download, 
   Eye, 
   Share2, 
-  CheckCircle2, 
-  Bookmark, 
   History, 
-  MapPin, 
   FileText,
   FileSpreadsheet,
   Image as ImageIcon,
@@ -27,7 +24,7 @@ interface NoticeDetailViewProps {
   allNotices: Notice[];
   onBack: () => void;
   onSelectNotice: (id: string) => void;
-  onToggleAcknowledge: (id: string) => void;
+  onToggleAcknowledge?: (id: string) => void;
   onToggleBookmark?: (id: string) => void;
 }
 
@@ -36,8 +33,8 @@ export const NoticeDetailView: React.FC<NoticeDetailViewProps> = ({
   allNotices,
   onBack,
   onSelectNotice,
-  onToggleAcknowledge,
-  onToggleBookmark,
+  onToggleAcknowledge: _onToggleAcknowledge,
+  onToggleBookmark: _onToggleBookmark,
 }) => {
   const [activeAttachment, setActiveAttachment] = useState<Attachment | null>(null);
   const [copiedShare, setCopiedShare] = useState(false);
@@ -283,46 +280,18 @@ export const NoticeDetailView: React.FC<NoticeDetailViewProps> = ({
             )}
 
             {/* Action Bar */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 pt-1">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleShare}
-                  className="flex-1 sm:flex-none justify-center px-3 sm:px-4 py-2 border border-[#737782] text-[#1c1b1b] text-xs font-semibold rounded-sm hover:bg-[#f5f7fa] transition-colors flex items-center gap-1.5 cursor-pointer"
-                >
-                  {copiedShare ? <Check className="w-4 h-4 text-emerald-600" /> : <Share2 className="w-4 h-4" />}
-                  <span>{copiedShare ? 'Link Copied!' : 'Share Notice'}</span>
-                </button>
-
-                {onToggleBookmark && (
-                  <button
-                    onClick={() => onToggleBookmark(notice.id)}
-                    className={`flex-1 sm:flex-none justify-center px-3 py-2 border text-xs font-semibold rounded-sm transition-colors flex items-center gap-1.5 cursor-pointer ${
-                      notice.bookmarked
-                        ? 'bg-blue-50 border-[#003c84] text-[#003c84]'
-                        : 'border-[#e2e6ec] text-[#5c6470] hover:bg-[#f5f7fa]'
-                    }`}
-                  >
-                    <Bookmark className={`w-4 h-4 ${notice.bookmarked ? 'fill-[#003c84]' : ''}`} />
-                    <span>{notice.bookmarked ? 'Saved' : 'Bookmark'}</span>
-                  </button>
-                )}
-              </div>
-
+            <div className="flex items-center justify-start gap-2.5 sm:gap-3 pt-1">
               <button
-                onClick={() => onToggleAcknowledge(notice.id)}
-                className={`w-full sm:w-auto justify-center px-4 sm:px-5 py-2 text-xs font-bold uppercase tracking-wider rounded-sm transition-all shadow-xs flex items-center gap-2 cursor-pointer ${
-                  notice.acknowledged
-                    ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                    : 'bg-[#003c84] hover:bg-[#43ccd1] text-white'
-                }`}
+                onClick={handleShare}
+                className="justify-center px-3 sm:px-4 py-2 border border-[#737782] text-[#1c1b1b] text-xs font-semibold rounded-sm hover:bg-[#f5f7fa] transition-colors flex items-center gap-1.5 cursor-pointer"
               >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>{notice.acknowledged ? 'Acknowledged ✓' : 'Acknowledge Notice'}</span>
+                {copiedShare ? <Check className="w-4 h-4 text-emerald-600" /> : <Share2 className="w-4 h-4" />}
+                <span>{copiedShare ? 'Link Copied!' : 'Share Notice'}</span>
               </button>
             </div>
           </div>
 
-          {/* Right Sidebar: Related Notices & Department Contact */}
+          {/* Right Sidebar: Related Notices */}
           <div className="w-full lg:w-[320px] flex flex-col gap-5 shrink-0">
             {/* Related Notices */}
             <div className="bg-white rounded-xl border border-[#e2e6ec] p-4 shadow-2xs">
@@ -349,29 +318,6 @@ export const NoticeDetailView: React.FC<NoticeDetailViewProps> = ({
                     </h4>
                   </div>
                 ))}
-              </div>
-            </div>
-
-            {/* Department Office Card */}
-            <div className="bg-[#00275a] text-white rounded-xl p-4 shadow-2xs flex flex-col justify-between">
-              <div>
-                <span className="text-[10px] font-bold text-[#43ccd1] uppercase tracking-wider block mb-1">
-                  Department Desk
-                </span>
-                <h4 className="text-sm font-bold text-white mb-2">{notice.department}</h4>
-                <p className="text-xs text-slate-300 leading-relaxed mb-3">
-                  For queries regarding this circular, visit the departmental office during administrative hours (10:00 AM - 04:00 PM).
-                </p>
-              </div>
-
-              <div className="pt-3 border-t border-white/15 flex items-center justify-between text-xs text-slate-200">
-                <div className="flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-[#43ccd1]" />
-                  <span>Block B, Room 304</span>
-                </div>
-                <span className="text-[11px] text-[#43ccd1] font-semibold hover:underline cursor-pointer">
-                  Contact Cell
-                </span>
               </div>
             </div>
           </div>

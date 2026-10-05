@@ -38,7 +38,7 @@ export const noticeCreateSchema = z.object({
   issuedBy: z.string().min(1, 'Issuing authority is required'),
   department: z.string().min(1, 'Department is required'),
   departmentKey: z.string().default('admin'),
-  targetAudience: z.string().default('All Enrolled Students'),
+  targetAudience: z.string().default('FY-BTECH'),
   academicYear: z.string().optional().default('AY 2026-27'),
   date: z.string().optional(),
   time: z.string().optional(),
@@ -51,12 +51,18 @@ export const noticeCreateSchema = z.object({
   actionDescription: z.string().optional().nullable(),
   attachments: z
     .array(
-      z.object({
-        name: z.string(),
-        size: z.string(),
-        type: z.string(),
-        url: z.string().optional(),
-      })
+      z
+        .object({
+          name: z.string(),
+          size: z.string(),
+          type: z.string(),
+          url: z.string().optional(),
+          fileUrl: z.string().optional(),
+          storagePath: z.string().optional(),
+          originalName: z.string().optional(),
+          mimeType: z.string().optional(),
+        })
+        .passthrough()
     )
     .optional(),
 });
