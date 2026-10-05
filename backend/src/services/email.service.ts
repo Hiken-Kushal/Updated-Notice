@@ -330,18 +330,19 @@ Pune, Maharashtra, India
       to: toEmail,
       subject: `New ICEM Notice: ${notice.title}`,
 
-      text: `ICEM Smart Notice Portal
+      text: `ICEM SMART NOTICE PORTAL
 
-A new notice has been published.
+A NEW NOTICE HAS BEEN PUBLISHED
 
 Title: ${notice.title}
 Category: ${notice.category || 'General'}
 Issued By: ${notice.issuedBy || 'ICEM Administration'}
 ${notice.refNo ? `Reference No: ${notice.refNo}` : ''}
 
-${notice.summary || ''}
+Summary:
+${notice.summary || 'No summary provided.'}
 
-View the notice:
+View Notice:
 ${noticeUrl}
 
 You are receiving this email because you subscribed to ICEM Notice alerts.
@@ -355,149 +356,82 @@ You are receiving this email because you subscribed to ICEM Notice alerts.
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>New ICEM Notice</title>
 </head>
-
-<body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;color:#1e293b;">
-
-  <div style="padding:32px 16px;">
-
-    <div style="
-      max-width:600px;
-      margin:0 auto;
-      background:#ffffff;
-      border:1px solid #e2e8f0;
-      border-radius:8px;
-      overflow:hidden;
-    ">
-
-      <div style="
-        background:#003c84;
-        padding:28px;
-        text-align:center;
-        color:white;
-      ">
-        <div style="
-          font-size:11px;
-          letter-spacing:1.5px;
-          text-transform:uppercase;
-          font-weight:bold;
-          margin-bottom:10px;
-        ">
-          Official Communication
-        </div>
-
-        <h1 style="margin:0;font-size:22px;">
-          New Notice Published
-        </h1>
-
-        <p style="margin:8px 0 0;color:#dbeafe;font-size:13px;">
-          ICEM Smart Notice Portal
-        </p>
-      </div>
-
-      <div style="height:4px;background:#f59e0b;"></div>
-
-      <div style="padding:28px;">
-
-        <h2 style="
-          margin:0 0 16px;
-          color:#00275a;
-          font-size:20px;
-        ">
-          ${notice.title}
-        </h2>
-
-        <div style="
-          background:#f8fafc;
-          border:1px solid #e2e8f0;
-          border-radius:6px;
-          padding:16px;
-          margin-bottom:20px;
-        ">
-
-          <p style="margin:0 0 8px;font-size:13px;">
-            <strong>Category:</strong>
-            ${notice.category || 'General'}
-          </p>
-
-          <p style="margin:0 0 8px;font-size:13px;">
-            <strong>Issued By:</strong>
-            ${notice.issuedBy || 'ICEM Administration'}
-          </p>
-
-          ${
-            notice.refNo
-              ? `
-          <p style="margin:0;font-size:13px;">
-            <strong>Reference No:</strong>
-            ${notice.refNo}
-          </p>
-          `
-              : ''
-          }
-
-        </div>
-
-        ${
-          notice.summary
-            ? `
-        <p style="
-          font-size:14px;
-          line-height:1.6;
-          color:#475569;
-        ">
-          ${notice.summary}
-        </p>
-        `
-            : ''
-        }
-
-        <div style="text-align:center;margin:30px 0 20px;">
-
-          <a
-            href="${noticeUrl}"
-            style="
-              display:inline-block;
-              background:#003c84;
-              color:#ffffff;
-              text-decoration:none;
-              font-size:14px;
-              font-weight:bold;
-              padding:12px 28px;
-              border-radius:6px;
-            "
-          >
-            View Notice
-          </a>
-
-        </div>
-
-      </div>
-
-      <div style="
-        background:#f8fafc;
-        border-top:1px solid #e2e8f0;
-        padding:20px 28px;
-        text-align:center;
-        font-size:11px;
-        color:#64748b;
-        line-height:1.5;
-      ">
-
-        <strong>Indira College of Engineering and Management (ICEM)</strong>
-        <br>
-        ICEM Smart Notice & Circular Distribution Portal
-
-        <p style="margin:12px 0 0;">
-          You are receiving this email because you subscribed
-          to official ICEM notice alerts.
-        </p>
-
-      </div>
-
-    </div>
-
-  </div>
-
+<body style="margin:0;padding:0;background-color:#f1f5f9;font-family:Arial,Helvetica,sans-serif;color:#1e293b;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:#f1f5f9;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background-color:#ffffff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
+          <tr>
+            <td align="center" style="padding:28px 24px 24px;background-color:#003c84;color:#ffffff;">
+              <p style="margin:0 0 14px;font-size:13px;font-weight:bold;letter-spacing:0.4px;">ICEM Smart Notice Portal</p>
+              <span style="display:inline-block;padding:5px 11px;border:1px solid #bfdbfe;border-radius:20px;color:#ffffff;font-size:10px;font-weight:bold;letter-spacing:1.4px;">OFFICIAL NOTICE</span>
+              <h1 style="margin:16px 0 0;color:#ffffff;font-size:23px;line-height:1.35;font-weight:bold;">A New Notice Has Been Published</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="height:4px;background-color:#f59e0b;font-size:0;line-height:0;">&nbsp;</td>
+          </tr>
+          <tr>
+            <td style="padding:28px 24px 20px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:#ffffff;">
+                <tr>
+                  <td style="padding:0 0 10px;color:#64748b;font-size:11px;font-weight:bold;letter-spacing:1.5px;">NOTICE</td>
+                </tr>
+                <tr>
+                  <td style="padding:0 0 18px;color:#00275a;font-size:23px;line-height:1.35;font-weight:bold;">${notice.title}</td>
+                </tr>
+                <tr>
+                  <td style="padding:0 0 18px;">
+                    <span style="display:inline-block;padding:6px 12px;background-color:#eff6ff;border:1px solid #bfdbfe;border-radius:16px;color:#003c84;font-size:12px;font-weight:bold;">${notice.category || 'General'}</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 0 12px;color:#334155;font-size:14px;line-height:1.5;"><strong style="color:#00275a;">Issued By:</strong>&nbsp; ${notice.issuedBy || 'ICEM Administration'}</td>
+                </tr>
+                ${
+                  notice.refNo
+                    ? `
+                <tr>
+                  <td style="padding:0 0 16px;color:#334155;font-size:14px;line-height:1.5;"><strong style="color:#00275a;">Reference No:</strong>&nbsp; ${notice.refNo}</td>
+                </tr>
+                `
+                    : ''
+                }
+                <tr>
+                  <td style="padding:18px;background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;">
+                    <p style="margin:0 0 8px;color:#00275a;font-size:12px;font-weight:bold;letter-spacing:0.5px;">SUMMARY</p>
+                    <p style="margin:0;color:#475569;font-size:14px;line-height:1.7;">${notice.summary || 'No summary provided.'}</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:8px 24px 28px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center" bgcolor="#003c84" style="border-radius:6px;">
+                    <a href="${noticeUrl}" style="display:inline-block;padding:14px 32px;border:1px solid #003c84;border-radius:6px;background-color:#003c84;color:#ffffff;text-decoration:none;font-size:15px;line-height:1.2;font-weight:bold;">View Notice</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 24px;background-color:#fffbeb;border-top:1px solid #fde68a;color:#78350f;text-align:center;font-size:12px;line-height:1.6;">
+              You are receiving this email because you subscribed to ICEM Notice alerts.
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:20px 24px;background-color:#f8fafc;border-top:1px solid #e2e8f0;color:#64748b;font-size:11px;line-height:1.6;">
+              <strong style="color:#334155;">Indira College of Engineering and Management (ICEM)</strong><br>
+              ICEM Smart Notice &amp; Circular Distribution Portal
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>
 `,
