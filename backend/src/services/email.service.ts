@@ -300,4 +300,225 @@ Pune, Maharashtra, India
       return false;
     }
   }
+    static async sendNewNoticeNotification(
+    toEmail: string,
+    notice: {
+      title: string;
+      category?: string;
+      issuedBy?: string;
+      summary?: string;
+      id: string;
+      refNo?: string;
+    }
+  ): Promise<boolean> {
+    const transporter = this.getTransporter();
+
+    if (!transporter) {
+      console.warn(
+        `[EmailService] SMTP not configured. Skipping notice notification for ${toEmail}.`
+      );
+      return false;
+    }
+
+    const portalUrl =
+      env.CLIENT_URLS[0] || 'http://localhost:5173';
+
+    const noticeUrl = `${portalUrl}/#/notice/${notice.id}`;
+
+    const mailOptions = {
+      from: env.EMAIL_FROM,
+      to: toEmail,
+      subject: `New ICEM Notice: ${notice.title}`,
+
+      text: `ICEM Smart Notice Portal
+
+A new notice has been published.
+
+Title: ${notice.title}
+Category: ${notice.category || 'General'}
+Issued By: ${notice.issuedBy || 'ICEM Administration'}
+${notice.refNo ? `Reference No: ${notice.refNo}` : ''}
+
+${notice.summary || ''}
+
+View the notice:
+${noticeUrl}
+
+You are receiving this email because you subscribed to ICEM Notice alerts.
+`,
+
+      html: `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New ICEM Notice</title>
+</head>
+
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;color:#1e293b;">
+
+  <div style="padding:32px 16px;">
+
+    <div style="
+      max-width:600px;
+      margin:0 auto;
+      background:#ffffff;
+      border:1px solid #e2e8f0;
+      border-radius:8px;
+      overflow:hidden;
+    ">
+
+      <div style="
+        background:#003c84;
+        padding:28px;
+        text-align:center;
+        color:white;
+      ">
+        <div style="
+          font-size:11px;
+          letter-spacing:1.5px;
+          text-transform:uppercase;
+          font-weight:bold;
+          margin-bottom:10px;
+        ">
+          Official Communication
+        </div>
+
+        <h1 style="margin:0;font-size:22px;">
+          New Notice Published
+        </h1>
+
+        <p style="margin:8px 0 0;color:#dbeafe;font-size:13px;">
+          ICEM Smart Notice Portal
+        </p>
+      </div>
+
+      <div style="height:4px;background:#f59e0b;"></div>
+
+      <div style="padding:28px;">
+
+        <h2 style="
+          margin:0 0 16px;
+          color:#00275a;
+          font-size:20px;
+        ">
+          ${notice.title}
+        </h2>
+
+        <div style="
+          background:#f8fafc;
+          border:1px solid #e2e8f0;
+          border-radius:6px;
+          padding:16px;
+          margin-bottom:20px;
+        ">
+
+          <p style="margin:0 0 8px;font-size:13px;">
+            <strong>Category:</strong>
+            ${notice.category || 'General'}
+          </p>
+
+          <p style="margin:0 0 8px;font-size:13px;">
+            <strong>Issued By:</strong>
+            ${notice.issuedBy || 'ICEM Administration'}
+          </p>
+
+          ${
+            notice.refNo
+              ? `
+          <p style="margin:0;font-size:13px;">
+            <strong>Reference No:</strong>
+            ${notice.refNo}
+          </p>
+          `
+              : ''
+          }
+
+        </div>
+
+        ${
+          notice.summary
+            ? `
+        <p style="
+          font-size:14px;
+          line-height:1.6;
+          color:#475569;
+        ">
+          ${notice.summary}
+        </p>
+        `
+            : ''
+        }
+
+        <div style="text-align:center;margin:30px 0 20px;">
+
+          <a
+            href="${noticeUrl}"
+            style="
+              display:inline-block;
+              background:#003c84;
+              color:#ffffff;
+              text-decoration:none;
+              font-size:14px;
+              font-weight:bold;
+              padding:12px 28px;
+              border-radius:6px;
+            "
+          >
+            View Notice
+          </a>
+
+        </div>
+
+      </div>
+
+      <div style="
+        background:#f8fafc;
+        border-top:1px solid #e2e8f0;
+        padding:20px 28px;
+        text-align:center;
+        font-size:11px;
+        color:#64748b;
+        line-height:1.5;
+      ">
+
+        <strong>Indira College of Engineering and Management (ICEM)</strong>
+        <br>
+        ICEM Smart Notice & Circular Distribution Portal
+
+        <p style="margin:12px 0 0;">
+          You are receiving this email because you subscribed
+          to official ICEM notice alerts.
+        </p>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</body>
+</html>
+`,
+    };
+
+    try {
+      const info = await transporter.sendMail(mailOptions);
+
+      console.log(
+        `[EmailService] Notice notification sent to ${toEmail} ` +
+        `(MessageId: ${info.messageId})`
+      );
+
+      return true;
+    } catch (error: any) {
+      console.error(
+        `[EmailService] Failed to send notice notification to ${toEmail}:`,
+        error?.message || error
+      );
+
+      return false;
+    }
+  }
 }

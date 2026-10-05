@@ -1,3 +1,4 @@
+import { EmailService } from './email.service';
 import { prisma } from '../config/prisma';
 import { Prisma } from '@prisma/client';
 import { supabase } from '../config/supabase';
@@ -58,6 +59,8 @@ export interface NoticeQueryParams {
 }
 
 export class NoticeService {
+  private emailService = new EmailService();
+
   /**
    * Normalizes notice object to satisfy both Admin Portal and Student Portal interfaces
    */
@@ -320,6 +323,43 @@ export class NoticeService {
           attachments: true,
         },
       });
+
+      try {
+        const subscribers = await prisma.newsletterSubscription.findMany({
+          where: { isActive: true },
+        });
+
+        const emailResults = await Promise.allSettled(
+          subscribers.map((subscriber) =>
+            EmailService.sendNewNoticeNotification(subscriber.email, {
+              id: notice.id,
+              title: notice.title,
+              category: notice.category,
+              issuedBy: notice.issuedBy,
+              summary: notice.summary,
+              refNo: notice.refNo,
+            })
+          )
+        );
+
+        emailResults.forEach((result, index) => {
+          if (result.status === 'rejected') {
+            console.error(
+              `[NoticeService] Failed to send new-notice email to ${subscribers[index].email}:`,
+              result.reason
+            );
+          } else if (!result.value) {
+            console.warn(
+              `[NoticeService] New-notice email was not sent to ${subscribers[index].email}.`
+            );
+          }
+        });
+      } catch (emailError: any) {
+        console.error(
+          '[NoticeService] Failed to notify newsletter subscribers about the new notice:',
+          emailError?.message || emailError
+        );
+      }
 
       return this.normalizeNotice(notice);
     } catch (error: any) {
