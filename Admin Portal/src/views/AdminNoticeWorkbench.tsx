@@ -117,6 +117,7 @@ interface AdminNoticeWorkbenchProps {
   initialSearch?: string;
   currentTab?: string;
   selectedCategory?: string;
+  canManageNotices?: boolean;
   onNavigateTab?: (tab: string, category?: string) => void;
   onStatsChange?: (total: number, published: number) => void;
 }
@@ -152,6 +153,7 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
   initialSearch = '',
   currentTab = 'dashboard',
   selectedCategory = 'all',
+  canManageNotices = true,
   onNavigateTab,
   onStatsChange,
 }) => {
@@ -721,7 +723,7 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
         </div>
       )}
 
-      {currentTab === 'create-notice' ? (
+      {currentTab === 'create-notice' && canManageNotices ? (
         /* ========================================================================= */
         /* CREATE / EDIT NOTICE VIEW                                                */
         /* ========================================================================= */
@@ -1074,12 +1076,16 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
           {/* Page Header */}
           <div className="flex flex-col gap-1 pt-1">
             <h1 className="text-2xl sm:text-[26px] font-bold text-[#00275a] tracking-tight leading-tight">
-              {filters.category && filters.category !== 'all' ? `${filters.category} Notices` : 'Manage Notices'}
+              {filters.category && filters.category !== 'all'
+                ? `${filters.category} Notices`
+                : canManageNotices ? 'Manage Notices' : 'Browse Notices'}
             </h1>
             <p className="text-xs sm:text-sm text-[#5c6470] max-w-2xl leading-relaxed">
               {filters.category && filters.category !== 'all'
-                ? `Filter and manage institutional circulars in the ${filters.category} category.`
-                : 'Search, review, edit, or publish institutional circulars and notices.'}
+                ? `${canManageNotices ? 'Filter and manage' : 'Browse'} institutional circulars in the ${filters.category} category.`
+                : canManageNotices
+                  ? 'Search, review, edit, or publish institutional circulars and notices.'
+                  : 'Search and review published institutional circulars and notices.'}
             </p>
           </div>
 
@@ -1570,25 +1576,26 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
                       </div>
                     )}
 
-                    {/* Action Buttons: Edit & Delete */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-[#e2e6ec]">
-                      <button
-                        onClick={() => handleOpenEdit(activeNotice)}
-                        className="py-2.5 px-3 bg-[#003c84] hover:bg-[#00275a] text-white text-xs sm:text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 rounded-lg cursor-pointer shadow-2xs"
-                        type="button"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">edit</span>
-                        <span>Edit Notice</span>
-                      </button>
-                      <button
-                        onClick={() => handleDeleteNotice(activeNotice.id)}
-                        className="py-2.5 px-3 bg-white border border-[#fca5a5] text-[#dc2626] hover:bg-[#fee2e2] text-xs sm:text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 rounded-lg cursor-pointer"
-                        type="button"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">delete</span>
-                        <span>Delete Notice</span>
-                      </button>
-                    </div>
+                    {canManageNotices && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-[#e2e6ec]">
+                        <button
+                          onClick={() => handleOpenEdit(activeNotice)}
+                          className="py-2.5 px-3 bg-[#003c84] hover:bg-[#00275a] text-white text-xs sm:text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 rounded-lg cursor-pointer shadow-2xs"
+                          type="button"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">edit</span>
+                          <span>Edit Notice</span>
+                        </button>
+                        <button
+                          onClick={() => handleDeleteNotice(activeNotice.id)}
+                          className="py-2.5 px-3 bg-white border border-[#fca5a5] text-[#dc2626] hover:bg-[#fee2e2] text-xs sm:text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 rounded-lg cursor-pointer"
+                          type="button"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">delete</span>
+                          <span>Delete Notice</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (

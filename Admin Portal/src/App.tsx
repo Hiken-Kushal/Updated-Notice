@@ -122,6 +122,10 @@ export const App: React.FC = () => {
     setPublishedCount(published);
   };
 
+  const canManageAdminFeatures =
+    !isCheckingUser &&
+    (currentUser?.role === 'ADMIN' || currentUser?.role === 'SUPERADMIN');
+
   if (!isAuthenticated) {
     return (
       <AdminLoginView
@@ -162,6 +166,7 @@ export const App: React.FC = () => {
         onSearchChange={setSearchTerm}
         totalNoticesCount={totalCount}
         publishedNoticesCount={publishedCount}
+        showCreateNotice={canManageAdminFeatures}
         onCreateNotice={() => handleNavigateTab('create-notice')}
       />
 
@@ -177,13 +182,14 @@ export const App: React.FC = () => {
               You do not have permission to access account management.
             </div>
           )
-        ) : currentTab === 'dashboard-banner' ? (
+        ) : currentTab === 'dashboard-banner' && canManageAdminFeatures ? (
           <AdminBannerManager onNavigateTab={handleNavigateTab} />
         ) : (
           <AdminNoticeWorkbench
             initialSearch={searchTerm}
             currentTab={currentTab}
             selectedCategory={selectedCategory}
+            canManageNotices={canManageAdminFeatures}
             onNavigateTab={handleNavigateTab}
             onStatsChange={handleStatsChange}
           />

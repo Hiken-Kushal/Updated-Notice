@@ -1,7 +1,6 @@
 import express, { Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import path from 'path';
 import apiRouter from './routes';
 import { errorHandler } from './middlewares/error.middleware';
 import { env } from './config/env';
@@ -24,7 +23,7 @@ app.use(
       if (env.CLIENT_URLS.includes(origin) || env.NODE_ENV === 'development') {
         return callback(null, true);
       }
-      return callback(null, true); // Permissive in development
+      return callback(null, false);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -35,9 +34,6 @@ app.use(
 // Body Parsers
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Static file serving for uploads
-app.use('/uploads', express.static(path.resolve(env.UPLOAD_DIR)));
 
 // Mount API v1
 app.use('/api/v1', apiRouter);

@@ -38,7 +38,7 @@ export class UserController {
   /**
    * GET /api/v1/users/:id — Get user by ID
    */
-  static async getUserById(req: Request, res: Response) {
+  static async getUserById(req: Request<{ id: string }>, res: Response) {
     try {
       const user = await UserService.getUserById(req.params.id);
       if (!user) return ApiResponse.error(res, 'User not found', 404);
@@ -51,7 +51,7 @@ export class UserController {
   /**
    * PATCH /api/v1/users/:id/status — Update user account status
    */
-  static async updateUserStatus(req: Request, res: Response) {
+  static async updateUserStatus(req: Request<{ id: string }>, res: Response) {
     try {
       const { status } = req.body;
       const validStatuses = ['PENDING', 'APPROVED', 'REJECTED'];
@@ -68,7 +68,7 @@ export class UserController {
   /**
    * PATCH /api/v1/users/:id/role — Update user role
    */
-  static async updateUserRole(req: Request, res: Response) {
+  static async updateUserRole(req: Request<{ id: string }>, res: Response) {
     try {
       const { role } = req.body;
       const validRoles = ['SUPERADMIN', 'ADMIN', 'FACULTY', 'STUDENT'];
@@ -85,7 +85,7 @@ export class UserController {
   /**
    * DELETE /api/v1/users/:id — Delete a user
    */
-  static async deleteUser(req: Request, res: Response) {
+  static async deleteUser(req: Request<{ id: string }>, res: Response) {
     try {
       const requestingUserId = req.user?.id;
       if (!requestingUserId) {

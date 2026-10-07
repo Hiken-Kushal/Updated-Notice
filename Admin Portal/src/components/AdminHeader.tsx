@@ -6,6 +6,7 @@ interface AdminHeaderProps {
   onSearchChange: (value: string) => void;
   totalNoticesCount: number;
   publishedNoticesCount: number;
+  showCreateNotice: boolean;
   onCreateNotice: () => void;
 }
 
@@ -15,6 +16,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   onSearchChange,
   totalNoticesCount,
   publishedNoticesCount,
+  showCreateNotice,
   onCreateNotice,
 }) => {
   return (
@@ -73,14 +75,16 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
         </div>
 
         {/* Create Notice Button */}
-        <button
-          onClick={onCreateNotice}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#003c84] hover:bg-[#00275a] text-white text-xs sm:text-sm font-semibold rounded-lg shadow-xs transition-colors cursor-pointer shrink-0"
-          title="Create New Notice"
-        >
-          <span className="material-symbols-outlined text-[18px]">add_circle</span>
-          <span className="whitespace-nowrap">Create Notice</span>
-        </button>
+        {showCreateNotice && (
+          <button
+            onClick={onCreateNotice}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#003c84] hover:bg-[#00275a] text-white text-xs sm:text-sm font-semibold rounded-lg shadow-xs transition-colors cursor-pointer shrink-0"
+            title="Create New Notice"
+          >
+            <span className="material-symbols-outlined text-[18px]">add_circle</span>
+            <span className="whitespace-nowrap">Create Notice</span>
+          </button>
+        )}
       </div>
     </header>
   );
