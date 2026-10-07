@@ -70,6 +70,7 @@ export const AttachmentModal: React.FC<AttachmentModalProps> = ({
                   link.href = StudentApiService.resolveFileUrl(attachment.url);
                   link.setAttribute('download', attachment.name);
                   link.setAttribute('target', '_blank');
+                  link.setAttribute('rel', 'noopener noreferrer');
                   document.body.appendChild(link);
                   link.click();
                   document.body.removeChild(link);
@@ -77,21 +78,34 @@ export const AttachmentModal: React.FC<AttachmentModalProps> = ({
                   alert(`Downloading: ${attachment.name}`);
                 }
               }}
-              className="px-5 py-2.5 bg-[#003c84] hover:bg-[#43ccd1] text-white text-xs font-bold uppercase tracking-wider rounded-sm transition-colors flex items-center gap-2 shadow-sm cursor-pointer"
+              className="px-5 py-2.5 bg-[#003c84] hover:bg-[#00275a] text-white text-xs font-bold uppercase tracking-wider rounded-sm transition-colors flex items-center gap-2 shadow-sm cursor-pointer"
             >
               <Download className="w-4 h-4" /> Download Original ({attachment.size})
             </button>
             <button
               onClick={() => {
                 if (attachment.url) {
-                  window.open(StudentApiService.resolveFileUrl(attachment.url), '_blank');
+                  const fullUrl = StudentApiService.resolveFileUrl(attachment.url);
+                  const isPreviewable = attachment.type === 'pdf' || attachment.type === 'image' || attachment.name.match(/\.(pdf|png|jpe?g|webp|svg|txt)$/i);
+                  if (isPreviewable) {
+                    window.open(fullUrl, '_blank', 'noopener,noreferrer');
+                  } else {
+                    const link = document.createElement('a');
+                    link.href = fullUrl;
+                    link.setAttribute('download', attachment.name);
+                    link.setAttribute('target', '_blank');
+                    link.setAttribute('rel', 'noopener noreferrer');
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }
                 } else {
-                  window.open('#', '_blank');
+                  window.open('#', '_blank', 'noopener,noreferrer');
                 }
               }}
               className="px-4 py-2.5 bg-white border border-[#e2e6ec] hover:bg-[#f5f7fa] text-[#1c1b1b] text-xs font-semibold rounded-sm transition-colors flex items-center gap-2 cursor-pointer"
             >
-              <ExternalLink className="w-4 h-4 text-[#737782]" /> Open in Full Viewer
+              <ExternalLink className="w-4 h-4 text-[#737782]" /> Open in New Tab
             </button>
           </div>
         </div>

@@ -1,19 +1,14 @@
 import { Request, Response, NextFunction } from 'express';
 import { StudentService } from '../services/student.service';
 import { ApiResponse } from '../utils/apiResponse';
-import { prisma } from '../config/prisma';
 
 export class StudentController {
   static async toggleAcknowledge(req: Request, res: Response, next: NextFunction) {
     try {
       const noticeId = String(req.params.id);
-      let userId = req.user?.id;
+      const userId = req.user?.id;
       if (!userId) {
-        const student = await prisma.user.findFirst({ where: { role: 'STUDENT' } });
-        userId = student?.id;
-      }
-      if (!userId) {
-        return ApiResponse.error(res, 'User identity not found', 400);
+        return ApiResponse.error(res, 'Unauthorized', 401);
       }
       const result = await StudentService.toggleAcknowledge(noticeId, userId);
       return ApiResponse.success(res, 'Acknowledgement toggled', result);
@@ -25,13 +20,9 @@ export class StudentController {
   static async toggleBookmark(req: Request, res: Response, next: NextFunction) {
     try {
       const noticeId = String(req.params.id);
-      let userId = req.user?.id;
+      const userId = req.user?.id;
       if (!userId) {
-        const student = await prisma.user.findFirst({ where: { role: 'STUDENT' } });
-        userId = student?.id;
-      }
-      if (!userId) {
-        return ApiResponse.error(res, 'User identity not found', 400);
+        return ApiResponse.error(res, 'Unauthorized', 401);
       }
       const result = await StudentService.toggleBookmark(noticeId, userId);
       return ApiResponse.success(res, 'Bookmark toggled', result);

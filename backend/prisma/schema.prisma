@@ -8,8 +8,16 @@ generator client {
 }
 
 enum Role {
+  SUPERADMIN
   ADMIN
+  FACULTY
   STUDENT
+}
+
+enum AccountStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum NoticeStatus {
@@ -37,17 +45,18 @@ enum ScheduleType {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  username     String   @unique
-  email        String   @unique
+  id           String        @id @default(uuid())
+  username     String        @unique
+  email        String        @unique
   passwordHash String
   fullName     String
-  role         Role     @default(STUDENT)
+  role         Role          @default(STUDENT)
+  status       AccountStatus @default(APPROVED)
   department   String?
   academicYear String?
   avatarUrl    String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   // Relationships
   refreshTokens    RefreshToken[]
@@ -57,6 +66,8 @@ model User {
   authoredBanners  BannerEvent[]           @relation("BannerAuthor")
   uploadedDocs     CollegeDocument[]       @relation("DocUploader")
 
+  @@index([status])
+  @@index([role])
   @@map("users")
 }
 

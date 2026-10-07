@@ -4,27 +4,49 @@ import { AdminHeader } from './components/AdminHeader';
 import { AdminNoticeWorkbench } from './views/AdminNoticeWorkbench';
 import { AdminBannerManager } from './views/AdminBannerManager';
 import { AdminLoginView } from './views/AdminLoginView';
+import { AdminUserManager } from './views/AdminUserManager';
 
 import { AdminApiService } from './services/adminApi';
+import type { AdminUser } from './services/adminApi';
 
 export const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return AdminApiService.isAuthenticated();
   });
+  const [currentUser, setCurrentUser] = useState<AdminUser | null>(() =>
+    AdminApiService.isAuthenticated() ? AdminApiService.getStoredUser() : null
+  );
+  const [isCheckingUser, setIsCheckingUser] = useState<boolean>(() => AdminApiService.isAuthenticated());
 
   useEffect(() => {
-    if (AdminApiService.isAuthenticated()) {
+    const accessToken = AdminApiService.getAccessToken();
+    if (accessToken) {
       AdminApiService.getMe()
-        .then(() => setIsAuthenticated(true))
+        .then((user) => {
+          setCurrentUser(user);
+          setIsAuthenticated(true);
+        })
         .catch(() => {
-          AdminApiService.clearAuth();
-          setIsAuthenticated(false);
+          if (AdminApiService.getAccessToken() === accessToken) {
+            AdminApiService.clearAuth();
+            setCurrentUser(null);
+            setIsAuthenticated(false);
+          } else {
+            setCurrentUser(AdminApiService.getStoredUser());
+            setIsAuthenticated(AdminApiService.isAuthenticated());
+          }
+        })
+        .finally(() => {
+          setIsCheckingUser(false);
         });
+    } else {
+      setIsCheckingUser(false);
     }
   }, []);
 
   const handleLogout = async () => {
     await AdminApiService.logout();
+    setCurrentUser(null);
     setIsAuthenticated(false);
   };
 
@@ -57,6 +79,9 @@ export const App: React.FC = () => {
     if (rawHash === 'dashboard-banner' || rawHash === 'banners' || rawHash === 'banner-manager') {
       return { tab: 'dashboard-banner', category: 'all' };
     }
+    if (rawHash === 'account-requests') {
+      return { tab: 'account-requests', category: 'all' };
+    }
     if (rawHash.startsWith('category/')) {
       const cat = decodeURIComponent(rawHash.replace('category/', ''));
       return { tab: 'dashboard', category: cat };
@@ -82,6 +107,8 @@ export const App: React.FC = () => {
       window.location.hash = '#/create-notice';
     } else if (tab === 'dashboard-banner') {
       window.location.hash = '#/dashboard-banner';
+    } else if (tab === 'account-requests') {
+      window.location.hash = '#/account-requests';
     } else if (category && category !== 'all') {
       window.location.hash = `#/category/${encodeURIComponent(category)}`;
     } else {
@@ -102,6 +129,8 @@ export const App: React.FC = () => {
           window.location.href = getStudentPortalUrl();
         }}
         onLoginSuccess={() => {
+          setCurrentUser(AdminApiService.getStoredUser());
+          setIsCheckingUser(false);
           setIsAuthenticated(true);
         }}
       />
@@ -109,11 +138,14 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f7fa] text-[#1c1b1b] flex flex-col selection:bg-[#003c84] selection:text-white overflow-x-hidden font-sans">
+    <div className="min-h-screen bg-[#f5f7fa] text-[#1c1b1b] flex flex-col selection:bg-[#003c84] selection:text-white overflow-x-clip font-sans">
       {/* Sidebar Navigation */}
       <AdminSidebar
         currentTab={currentTab}
         selectedCategory={selectedCategory}
+        isSuperAdmin={!isCheckingUser && currentUser?.role === 'SUPERADMIN'}
+        currentUser={currentUser}
+        isUserLoading={isCheckingUser}
         onNavigateTab={handleNavigateTab}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -134,8 +166,18 @@ export const App: React.FC = () => {
       />
 
       {/* Main Administrative Content Area */}
-      <main className="relative pt-20 min-h-screen bg-[#f5f7fa] lg:ml-64 flex flex-col flex-1 px-3 sm:px-6 lg:px-8 py-5 sm:py-6 overflow-x-hidden">
-        {currentTab === 'dashboard-banner' ? (
+      <main className="relative min-h-screen bg-[#f5f7fa] lg:ml-64 flex flex-col flex-1 px-3 sm:px-6 lg:px-8 py-5 sm:py-6 overflow-x-hidden">
+        {currentTab === 'account-requests' ? (
+          isCheckingUser ? (
+            <div className="p-6 text-sm text-[#5c6470]">Checking account permissions...</div>
+          ) : currentUser?.role === 'SUPERADMIN' ? (
+            <AdminUserManager />
+          ) : (
+            <div role="alert" className="p-6 text-sm font-medium text-red-700">
+              You do not have permission to access account management.
+            </div>
+          )
+        ) : currentTab === 'dashboard-banner' ? (
           <AdminBannerManager onNavigateTab={handleNavigateTab} />
         ) : (
           <AdminNoticeWorkbench

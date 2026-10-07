@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search, Filter, X } from 'lucide-react';
+import { NoticeDateFilter } from './NoticeDateFilter';
 
 interface CategoryOption {
   label: string;
@@ -19,6 +20,9 @@ interface NoticeFilterBarProps {
   onToggleImportant: () => void;
   onResetFilters: () => void;
   totalCount: number;
+  selectedDate?: string;
+  onSelectDate?: (date?: string) => void;
+  availableDates?: string[];
 }
 
 export const NoticeFilterBar: React.FC<NoticeFilterBarProps> = ({
@@ -34,6 +38,9 @@ export const NoticeFilterBar: React.FC<NoticeFilterBarProps> = ({
   onToggleImportant,
   onResetFilters,
   totalCount,
+  selectedDate,
+  onSelectDate,
+  availableDates,
 }) => {
   const defaultCategories: CategoryOption[] = [
     { label: 'All', value: 'all' },
@@ -58,11 +65,12 @@ export const NoticeFilterBar: React.FC<NoticeFilterBarProps> = ({
     searchTerm !== '' ||
     (!hideCategoryPills && selectedCategory !== 'all') ||
     selectedDepartment !== 'all' ||
-    showOnlyImportant;
+    showOnlyImportant ||
+    !!selectedDate;
 
   return (
     <div className="flex flex-col gap-3 bg-white p-3 sm:p-4 rounded-xl border border-[#e2e6ec] shadow-2xs">
-      {/* Top row: Search input & Department Select */}
+      {/* Top row: Search input, Department Select, Date Filter, Important Only */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
         <div className="relative flex-1 max-w-md min-w-0">
           <Search className="w-4 h-4 text-[#737782] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -85,6 +93,14 @@ export const NoticeFilterBar: React.FC<NoticeFilterBarProps> = ({
         </div>
 
         <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+          {onSelectDate && (
+            <NoticeDateFilter
+              selectedDate={selectedDate}
+              onSelectDate={onSelectDate}
+              availableDates={availableDates}
+            />
+          )}
+
           <select
             value={selectedDepartment}
             onChange={(e) => onSelectDepartment(e.target.value)}

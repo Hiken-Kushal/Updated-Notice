@@ -59,6 +59,48 @@ export const initialPresets = [
   },
 ];
 
+function parseBannerDate(value: string): Date | null {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function hasExplicitTime(value: string): boolean {
+  return /T\d{2}:\d{2}|\b\d{1,2}:\d{2}(?:\s*[AP]M)?\b/i.test(value);
+}
+
+export function isBannerPubliclyVisible(banner: {
+  isActive: boolean;
+  status: string;
+  startDate?: string | null;
+  endDate?: string | null;
+}, now: Date = new Date()): boolean {
+  if (!banner.isActive || banner.status.toUpperCase() === 'CLOSED') {
+    return false;
+  }
+
+  if (banner.startDate) {
+    const startsAt = parseBannerDate(banner.startDate);
+    if (!startsAt || startsAt > now) {
+      return false;
+    }
+  }
+
+  if (banner.endDate) {
+    const endsAt = parseBannerDate(banner.endDate);
+    if (!endsAt) {
+      return false;
+    }
+    if (!hasExplicitTime(banner.endDate)) {
+      endsAt.setUTCHours(23, 59, 59, 999);
+    }
+    if (endsAt < now) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 export class BannerService {
   static normalizeBanner(banner: any) {
     let statusFormatted = 'open';
@@ -106,9 +148,22 @@ export class BannerService {
     return banners.map(this.normalizeBanner);
   }
 
+  static async getPublicBanners(category?: string) {
+    const banners = await this.getBanners(true, category);
+    return banners.filter((banner) => isBannerPubliclyVisible(banner));
+  }
+
   static async getBannerById(id: string) {
     const banner = await prisma.bannerEvent.findUnique({ where: { id } });
     if (!banner) throw new Error('Banner not found');
+    return this.normalizeBanner(banner);
+  }
+
+  static async getPublicBannerById(id: string) {
+    const banner = await prisma.bannerEvent.findUnique({ where: { id } });
+    if (!banner || !isBannerPubliclyVisible(banner)) {
+      return null;
+    }
     return this.normalizeBanner(banner);
   }
 

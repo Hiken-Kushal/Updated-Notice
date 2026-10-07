@@ -11,13 +11,19 @@ import { AdminLoginView } from './views/AdminLoginView';
 import { matchesNavCategory } from './types/notice';
 import type { Notice, ActionItem } from './types/notice';
 import { StudentApiService } from './services/studentApi';
+import {
+  parseDepartmentTargetAudience,
+  TARGET_AUDIENCES,
+} from '../../shared/targetAudiences';
 
 export const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<string>('dashboard');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedTargetAudience, setSelectedTargetAudience] = useState<string>('');
   const [selectedNoticeId, setSelectedNoticeId] = useState<string>('');
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [notices, setNotices] = useState<Notice[]>([]);
+  const [targetAudienceNotices, setTargetAudienceNotices] = useState<Notice[]>([]);
   const [actionItems, setActionItems] = useState<ActionItem[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
 
@@ -55,6 +61,30 @@ export const App: React.FC = () => {
     loadActionItems();
   }, [loadNotices, loadActionItems]);
 
+  useEffect(() => {
+    if (!selectedTargetAudience) {
+      setTargetAudienceNotices([]);
+      return;
+    }
+
+    let isCurrentRequest = true;
+    setTargetAudienceNotices([]);
+    StudentApiService.getNotices({ targetAudience: selectedTargetAudience, limit: 100 })
+      .then((data) => {
+        if (isCurrentRequest) setTargetAudienceNotices(data);
+      })
+      .catch((err) => {
+        if (isCurrentRequest) {
+          console.warn(`Could not load notices for ${selectedTargetAudience}:`, err);
+          setTargetAudienceNotices([]);
+        }
+      });
+
+    return () => {
+      isCurrentRequest = false;
+    };
+  }, [selectedTargetAudience]);
+
   // Calculate live counts for the 4 sidebar notice categories + events
   const categoryCounts = useMemo(() => {
     return {
@@ -70,32 +100,42 @@ export const App: React.FC = () => {
   const parseRoute = useCallback(() => {
     const rawHash = window.location.hash.replace(/^#\/?/, '').trim();
     if (!rawHash || rawHash === 'dashboard' || rawHash === 'notices/all' || rawHash === 'notices') {
-      return { view: 'dashboard', category: 'all', noticeId: undefined };
+      return { view: 'dashboard', category: 'all', noticeId: undefined, targetAudience: '' };
     }
     if (rawHash === 'admin-login' || rawHash === 'admin' || rawHash === 'login') {
-      return { view: 'admin-login', category: 'all', noticeId: undefined };
+      return { view: 'admin-login', category: 'all', noticeId: undefined, targetAudience: '' };
+    }
+    if (rawHash.startsWith('target-audience/')) {
+      const audience = decodeURIComponent(rawHash.replace('target-audience/', ''));
+      if (
+        TARGET_AUDIENCES.includes(audience as (typeof TARGET_AUDIENCES)[number]) ||
+        parseDepartmentTargetAudience(audience)
+      ) {
+        return { view: 'dashboard', category: 'all', noticeId: undefined, targetAudience: audience };
+      }
+      return { view: 'dashboard', category: 'all', noticeId: undefined, targetAudience: '' };
     }
     if (rawHash.startsWith('notices/')) {
       const cat = rawHash.replace('notices/', '').toLowerCase();
       if (cat === 'exam' || cat === 'placement' || cat === 'general' || cat === 'events') {
-        return { view: 'dashboard', category: cat, noticeId: undefined };
+        return { view: 'dashboard', category: cat, noticeId: undefined, targetAudience: '' };
       }
-      return { view: 'dashboard', category: 'all', noticeId: undefined };
+      return { view: 'dashboard', category: 'all', noticeId: undefined, targetAudience: '' };
     }
     if (rawHash === 'notices-table' || rawHash === 'notices-all-table') {
-      return { view: 'notices', category: 'all', noticeId: undefined };
+      return { view: 'notices', category: 'all', noticeId: undefined, targetAudience: '' };
     }
     if (rawHash.startsWith('notice/')) {
       const id = rawHash.replace('notice/', '');
-      return { view: 'notice-detail', category: 'all', noticeId: id };
+      return { view: 'notice-detail', category: 'all', noticeId: id, targetAudience: '' };
     }
     if (rawHash === 'timetable') {
-      return { view: 'timetable', category: 'all', noticeId: undefined };
+      return { view: 'timetable', category: 'all', noticeId: undefined, targetAudience: '' };
     }
     if (rawHash === 'events' || rawHash === 'events-cultures') {
-      return { view: 'dashboard', category: 'events', noticeId: undefined };
+      return { view: 'dashboard', category: 'events', noticeId: undefined, targetAudience: '' };
     }
-    return { view: 'dashboard', category: 'all', noticeId: undefined };
+    return { view: 'dashboard', category: 'all', noticeId: undefined, targetAudience: '' };
   }, []);
 
   // Sync state with URL hash
@@ -108,6 +148,9 @@ export const App: React.FC = () => {
       }
       if (route.noticeId) {
         setSelectedNoticeId(route.noticeId);
+      }
+      if (route.view !== 'notice-detail') {
+        setSelectedTargetAudience(route.targetAudience);
       }
     };
 
@@ -130,8 +173,16 @@ export const App: React.FC = () => {
 
   // Handle category selection from left sidebar - opens dedicated category page
   const handleSelectCategory = (cat: string) => {
+    setSelectedTargetAudience('');
     setSelectedCategory(cat);
     navigateTo(`notices/${cat}`);
+  };
+
+  const handleSelectTargetAudience = (targetAudience: string) => {
+    setCurrentView('dashboard');
+    setSelectedCategory('all');
+    setSelectedTargetAudience(targetAudience);
+    navigateTo(`target-audience/${encodeURIComponent(targetAudience)}`);
   };
 
   // Navigate to notice details
@@ -141,7 +192,12 @@ export const App: React.FC = () => {
   };
 
   // Find active selected notice for detail view
-  const activeNotice = notices.find((n) => n.id === selectedNoticeId) || (notices.length > 0 ? notices[0] : null);
+  const activeNotice =
+    (selectedTargetAudience
+      ? targetAudienceNotices.find((n) => n.id === selectedNoticeId)
+      : undefined) ||
+    notices.find((n) => n.id === selectedNoticeId) ||
+    (notices.length > 0 ? notices[0] : null);
 
   // Back button handler from notice detail
   const handleBackFromDetail = () => {
@@ -210,7 +266,9 @@ export const App: React.FC = () => {
       <Sidebar
         currentView={currentView}
         selectedCategory={selectedCategory}
+        selectedTargetAudience={selectedTargetAudience}
         onSelectCategory={handleSelectCategory}
+        onSelectTargetAudience={handleSelectTargetAudience}
         onNavigate={(view) => {
           if (view === 'dashboard') {
             navigateTo('dashboard');
@@ -250,8 +308,9 @@ export const App: React.FC = () => {
         <div className="flex-1 w-full max-w-full">
           {(currentView === 'dashboard' || currentView === 'events') && (
             <DashboardView
-              notices={notices}
+              notices={selectedTargetAudience ? targetAudienceNotices : notices}
               selectedCategory={selectedCategory}
+              selectedTargetAudience={selectedTargetAudience}
               onSelectNotice={handleSelectNotice}
               onNavigateView={(view) => {
                 if (view === 'notices') {
@@ -320,4 +379,3 @@ export const App: React.FC = () => {
 };
 
 export default App;
-

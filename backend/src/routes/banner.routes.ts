@@ -9,6 +9,7 @@ router.get('/', BannerController.getBanners);
 
 // Admin: get all banners (including inactive)
 router.get('/admin', authenticate, requireRole(['ADMIN']), BannerController.getAdminBanners);
+router.get('/admin/:id', authenticate, requireRole(['ADMIN']), BannerController.getAdminBannerById);
 router.post('/reset', authenticate, requireRole(['ADMIN']), BannerController.resetToPresets);
 
 // Specific banner

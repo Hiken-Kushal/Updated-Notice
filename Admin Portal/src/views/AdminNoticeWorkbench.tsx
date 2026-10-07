@@ -8,6 +8,14 @@ import {
 } from '../utils/noticeStorage';
 import { RichTextEditor } from '../components/RichTextEditor';
 import { AdminApiService } from '../services/adminApi';
+import {
+  createDepartmentTargetAudience,
+  DEPARTMENT_ACADEMIC_TARGETS,
+  FINAL_YEAR_PROGRAMS,
+  isDepartmentAcademicTarget,
+  parseDepartmentTargetAudience,
+  TARGET_AUDIENCES,
+} from '../../../shared/targetAudiences';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -33,25 +41,6 @@ const ISSUING_AUTHORITIES = [
   'Director of Physical Education',
   'Principal Office',
   'College Admin',
-];
-
-const TARGET_AUDIENCES = [
-  'FY-BTECH',
-  'SY-BTECH',
-  'TY-BTECH',
-  'FINAL YEAR ENGG',
-  'SY-IMCA',
-  'TY-IMCA',
-  'SY-IMBA',
-  'TY-IMBA',
-  'FY-MCA',
-  'SY-MCA',
-  'FY-MBA',
-  'SY-MBA',
-  'FY-MTECH',
-  'ST-MTECH',
-  'ALL STUDENTS',
-  'ALL STUDENTS & FACULTY',
 ];
 
 const normalizeNoticeDateToKey = (dateStr: string): string => {
@@ -205,6 +194,7 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
 
   // Dedicated Create Notice Form state
   const [createNoticeData, setCreateNoticeData] = useState<Partial<AdminNotice>>(getInitialCreateNoticeState);
+  const [selectedBranch, setSelectedBranch] = useState<string>('');
 
   // Separate Action Deadline date & time state
   const [actionDeadlineDate, setActionDeadlineDate] = useState<string>(() => parseDeadlineToDateAndTime('').date);
@@ -454,6 +444,8 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
   // Action: Open Edit Notice in full page form
   const handleOpenEdit = (notice: AdminNotice) => {
     setEditingNoticeId(notice.id);
+    const departmentTarget = parseDepartmentTargetAudience(notice.targetAudience);
+    setSelectedBranch(departmentTarget?.program || '');
     const parsedDeadline = parseDeadlineToDateAndTime(notice.actionDeadline);
     setActionDeadlineDate(parsedDeadline.date);
     setActionDeadlineTime(parsedDeadline.time);
@@ -471,7 +463,7 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
       departmentKey: notice.departmentKey,
       date: notice.date,
       time: notice.time,
-      targetAudience: notice.targetAudience || 'FY-BTECH',
+      targetAudience: departmentTarget?.academicTarget || (notice.targetAudience || 'FY-BTECH'),
       academicYear: notice.academicYear || 'AY 2026-27',
       isImportant: notice.isImportant || false,
       isUrgent: notice.isUrgent || false,
@@ -506,7 +498,14 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
     const noticeDate = createNoticeData.date || isoToDisplayDate();
     const noticeTime = createNoticeData.time || new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     const noticeAuthority = createNoticeData.issuedBy?.trim() || 'Training & Placement Officer';
-    const noticeAudience = createNoticeData.targetAudience?.trim() || 'FY-BTECH';
+    const noticeAudience = isDepartmentAcademicTarget(createNoticeData.targetAudience || '')
+      ? createDepartmentTargetAudience(
+          createNoticeData.targetAudience as (typeof DEPARTMENT_ACADEMIC_TARGETS)[number],
+          selectedBranch
+            ? selectedBranch as (typeof FINAL_YEAR_PROGRAMS)[number]
+            : undefined
+        )
+      : (createNoticeData.targetAudience?.trim() || 'FY-BTECH');
 
     const finalDeadline = createNoticeData.actionRequired
       ? (actionDeadlineDate ? formatDeadlineToDisplay(actionDeadlineDate, actionDeadlineTime) : createNoticeData.actionDeadline?.trim())
@@ -573,6 +572,7 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
 
       setEditingNoticeId(null);
       setCreateNoticeData(getInitialCreateNoticeState());
+      setSelectedBranch('');
       const resetDeadline = parseDeadlineToDateAndTime('');
       setActionDeadlineDate(resetDeadline.date);
       setActionDeadlineTime(resetDeadline.time);
@@ -852,10 +852,17 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
                   <div className="relative">
                     <select
                       value={createNoticeData.targetAudience || 'FY-BTECH'}
-                      onChange={(e) => setCreateNoticeData((prev) => ({ ...prev, targetAudience: e.target.value }))}
+                      onChange={(e) => {
+                        const targetAudience = e.target.value;
+                        setCreateNoticeData((prev) => ({ ...prev, targetAudience }));
+                        setSelectedBranch('');
+                      }}
                       className="w-full px-3.5 py-2.5 bg-white text-[#1c1b1b] text-sm border border-[#e2e6ec] rounded-lg focus:border-[#003c84] focus:ring-1 focus:ring-[#003c84] focus:outline-none appearance-none cursor-pointer pr-8"
                     >
-                      {createNoticeData.targetAudience && !TARGET_AUDIENCES.includes(createNoticeData.targetAudience) && (
+                      {createNoticeData.targetAudience &&
+                        createNoticeData.targetAudience !== 'Department' &&
+                        !isDepartmentAcademicTarget(createNoticeData.targetAudience || '') &&
+                        !TARGET_AUDIENCES.some((audience) => audience === createNoticeData.targetAudience) && (
                         <option value={createNoticeData.targetAudience}>{createNoticeData.targetAudience}</option>
                       )}
                       {TARGET_AUDIENCES.map((aud) => (
@@ -869,6 +876,28 @@ export const AdminNoticeWorkbench: React.FC<AdminNoticeWorkbenchProps> = ({
                     </span>
                   </div>
                 </div>
+                {isDepartmentAcademicTarget(createNoticeData.targetAudience || '') && (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold uppercase tracking-wider text-[#434751]">
+                      Branch (optional)
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={selectedBranch}
+                        onChange={(e) => setSelectedBranch(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-white text-[#1c1b1b] text-sm border border-[#e2e6ec] rounded-lg focus:border-[#003c84] focus:ring-1 focus:ring-[#003c84] focus:outline-none appearance-none cursor-pointer pr-8"
+                      >
+                        <option value="">All branches</option>
+                        {FINAL_YEAR_PROGRAMS.map((program) => (
+                          <option key={program} value={program}>{program}</option>
+                        ))}
+                      </select>
+                      <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-[#737782] text-[18px] pointer-events-none">
+                        expand_more
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Date & Time Picker Row */}

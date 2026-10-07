@@ -1,4 +1,4 @@
-export type UserRole = 'ADMIN' | 'STUDENT';
+export type UserRole = 'SUPERADMIN' | 'ADMIN' | 'FACULTY' | 'STUDENT';
 
 export interface TokenPayload {
   id: string;

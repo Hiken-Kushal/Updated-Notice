@@ -18,9 +18,9 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   onCreateNotice,
 }) => {
   return (
-    <header className="fixed top-0 left-0 lg:left-64 right-0 h-16 bg-white/95 backdrop-blur-xl z-40 flex items-center justify-between px-4 sm:px-6 lg:px-8 shadow-[0_1px_8px_rgba(0,0,0,0.04)] border-b border-[#e2e6ec]/70">
+    <header className="sticky top-0 z-40 w-full lg:ml-64 lg:w-[calc(100%-16rem)] min-h-16 h-auto lg:h-16 bg-white/95 backdrop-blur-xl flex flex-wrap items-center justify-between gap-y-2 px-4 sm:px-6 lg:px-8 py-2 lg:flex-nowrap lg:py-0 shadow-[0_1px_8px_rgba(0,0,0,0.04)] border-b border-[#e2e6ec]/70">
       {/* Mobile Toggle & Global Search Bar */}
-      <div className="flex items-center gap-3 flex-1 max-w-lg min-w-0">
+      <div className="flex items-center gap-3 flex-1 basis-full lg:basis-auto max-w-lg min-w-0">
         <button
           onClick={onToggleSidebar}
           className="lg:hidden p-2 text-[#5c6470] hover:text-[#00275a] hover:bg-[#f5f7fa] rounded transition-colors shrink-0 cursor-pointer"
@@ -55,9 +55,9 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
       </div>
 
       {/* Right: Compact Statistics & Create Notice Button */}
-      <div className="flex items-center gap-2 sm:gap-4 shrink-0 pl-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-4 shrink-0 w-full lg:w-auto pl-0 lg:pl-3">
         {/* Compact Statistics Badges */}
-        <div className="hidden sm:flex items-center gap-2">
+        <div className="flex items-center gap-2">
           {/* Total Notices */}
           <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#f0f4fd] border border-[#d8e2ff] rounded-md">
             <span className="text-[11px] font-semibold text-[#5c6470]">Total:</span>

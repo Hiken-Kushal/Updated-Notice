@@ -26,7 +26,9 @@ export interface AdminUser {
   username: string;
   email: string;
   fullName: string;
-  role: 'ADMIN' | 'STUDENT';
+  role: 'SUPERADMIN' | 'ADMIN' | 'FACULTY' | 'STUDENT';
+  status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  createdAt?: string;
   department?: string;
   year?: string;
   prn?: string;
@@ -159,33 +161,66 @@ export class AdminApiService {
       if (!response.ok || !data.success) {
         // If unauthorized and we have a refresh token, attempt token refresh once
         if (response.status === 401 && !options._isRetry) {
-          const refreshToken = this.getRefreshToken();
-          if (refreshToken) {
-            try {
-              const refreshRes = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ refreshToken }),
+          const currentToken = this.getAccessToken();
+          if (currentToken !== token) {
+            if (currentToken) {
+              return await this.request<T>(endpoint, {
+                ...options,
+                headers: { ...headers, Authorization: `Bearer ${currentToken}` },
+                _isRetry: true,
               });
-              const refreshData = await refreshRes.json();
-              if (refreshRes.ok && refreshData.success && refreshData.data?.tokens?.accessToken) {
-                const newAccessToken = refreshData.data.tokens.accessToken;
-                localStorage.setItem(this.tokenKey, newAccessToken);
-                if (refreshData.data.tokens.refreshToken) {
-                  localStorage.setItem(this.refreshTokenKey, refreshData.data.tokens.refreshToken);
+            }
+          } else {
+            const refreshToken = this.getRefreshToken();
+            if (refreshToken) {
+              try {
+                const refreshRes = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ refreshToken }),
+                });
+                const refreshData = await refreshRes.json();
+                if (refreshRes.ok && refreshData.success && refreshData.data?.tokens?.accessToken) {
+                  const latestToken = this.getAccessToken();
+                  if (latestToken !== token || this.getRefreshToken() !== refreshToken) {
+                    if (latestToken) {
+                      return await this.request<T>(endpoint, {
+                        ...options,
+                        headers: { ...headers, Authorization: `Bearer ${latestToken}` },
+                        _isRetry: true,
+                      });
+                    }
+                  } else {
+                    const newAccessToken = refreshData.data.tokens.accessToken;
+                    localStorage.setItem(this.tokenKey, newAccessToken);
+                    if (refreshData.data.tokens.refreshToken) {
+                      localStorage.setItem(this.refreshTokenKey, refreshData.data.tokens.refreshToken);
+                    }
+                    const newHeaders = { ...headers, Authorization: `Bearer ${newAccessToken}` };
+                    return await this.request<T>(endpoint, {
+                      ...options,
+                      headers: newHeaders,
+                      _isRetry: true,
+                    });
+                  }
                 }
-                const newHeaders = { ...headers, Authorization: `Bearer ${newAccessToken}` };
+              } catch (refreshErr) {
+                console.warn('Token refresh failed:', refreshErr);
+              }
+            }
+            if (this.getAccessToken() === token) {
+              this.clearAuth();
+            } else {
+              const latestToken = this.getAccessToken();
+              if (latestToken) {
                 return await this.request<T>(endpoint, {
                   ...options,
-                  headers: newHeaders,
+                  headers: { ...headers, Authorization: `Bearer ${latestToken}` },
                   _isRetry: true,
                 });
               }
-            } catch (refreshErr) {
-              console.warn('Token refresh failed:', refreshErr);
             }
           }
-          this.clearAuth();
         }
 
         let errorMsg = data.message || `Request failed with status ${response.status}`;
@@ -216,6 +251,34 @@ export class AdminApiService {
       return res.data;
     }
     throw new Error('Login failed: invalid response data from server');
+  }
+
+  static async registerAdminRequest(data: {
+    fullName: string;
+    email: string;
+    username: string;
+    password: string;
+  }): Promise<AdminUser> {
+    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...data, role: 'ADMIN' }),
+    });
+    const result: ApiResponse<AdminUser> = await response.json();
+
+    if (!response.ok || !result.success) {
+      let errorMessage = result.message || `Request failed with status ${response.status}`;
+      if (result.errors && Array.isArray(result.errors) && result.errors.length > 0) {
+        const details = result.errors.map((error: any) => error.message || `${error.field}: invalid`).join(', ');
+        errorMessage = `${errorMessage}: ${details}`;
+      }
+      throw new Error(errorMessage);
+    }
+
+    if (!result.data) {
+      throw new Error('Registration failed: invalid response data from server');
+    }
+    return result.data;
   }
 
   static async getMe(): Promise<AdminUser> {
@@ -322,8 +385,8 @@ export class AdminApiService {
   // ==================== BANNERS ====================
 
   static async getBanners(activeOnly?: boolean): Promise<DashboardBanner[]> {
-    const query = activeOnly ? '?activeOnly=true' : '';
-    const res = await this.request<DashboardBanner[]>(`/banners${query}`);
+    const endpoint = activeOnly === true ? '/banners?activeOnly=true' : '/banners/admin';
+    const res = await this.request<DashboardBanner[]>(endpoint);
     return res.data || [];
   }
 
@@ -406,5 +469,49 @@ export class AdminApiService {
       throw new Error('Failed to get uploaded banner image URL');
     }
     return res.data;
+  }
+
+  // ==================== USER MANAGEMENT (SUPERADMIN) ====================
+
+  static async listUsers(params?: {
+    role?: string;
+    status?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<ApiResponse<AdminUser[]>> {
+    const query = new URLSearchParams();
+    if (params?.role) query.append('role', params.role);
+    if (params?.status) query.append('status', params.status);
+    if (params?.search) query.append('search', params.search);
+    if (params?.page) query.append('page', String(params.page));
+    if (params?.limit) query.append('limit', String(params.limit));
+
+    const qs = query.toString();
+    return this.request<AdminUser[]>(`/users${qs ? `?${qs}` : ''}`);
+  }
+
+  static async getPendingUsers(): Promise<ApiResponse<AdminUser[]>> {
+    return this.request<AdminUser[]>('/users/pending');
+  }
+
+  static async updateUserStatus(userId: string, status: 'PENDING' | 'APPROVED' | 'REJECTED'): Promise<ApiResponse<AdminUser>> {
+    return this.request<AdminUser>(`/users/${userId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  static async updateUserRole(userId: string, role: 'SUPERADMIN' | 'ADMIN' | 'FACULTY' | 'STUDENT'): Promise<ApiResponse<AdminUser>> {
+    return this.request<AdminUser>(`/users/${userId}/role`, {
+      method: 'PATCH',
+      body: JSON.stringify({ role }),
+    });
+  }
+
+  static async deleteUser(userId: string): Promise<ApiResponse<{ id: string; message: string }>> {
+    return this.request<{ id: string; message: string }>(`/users/${userId}`, {
+      method: 'DELETE',
+    });
   }
 }

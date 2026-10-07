@@ -47,6 +47,7 @@ export interface NoticeQueryParams {
   category?: string;
   department?: string;
   departmentKey?: string;
+  targetAudience?: string;
   status?: string;
   isImportant?: boolean | string;
   isUrgent?: boolean | string;
@@ -166,6 +167,44 @@ export class NoticeService {
       where.department = { contains: params.department, mode: 'insensitive' };
     }
 
+    if (params.targetAudience && params.targetAudience !== 'all') {
+      const academicTargets = ['SY-BTECH', 'TY-BTECH', 'FINAL YEAR'];
+      const isBroadAcademicTarget = academicTargets.includes(params.targetAudience);
+      const isLegacyBroadDepartmentTarget =
+        params.targetAudience.startsWith('Department|') && !params.targetAudience.slice('Department|'.length).includes('|');
+      if (isBroadAcademicTarget || isLegacyBroadDepartmentTarget) {
+        const targetPrefixes = isLegacyBroadDepartmentTarget
+          ? [params.targetAudience]
+          : [params.targetAudience, `Department|${params.targetAudience}`];
+        if (params.targetAudience === 'FINAL YEAR' || params.targetAudience === 'Department|FINAL YEAR') {
+          targetPrefixes.push('FINAL YEAR ENGG', 'Department|FINAL YEAR ENGG');
+        } else if (params.targetAudience === 'Department|FINAL YEAR ENGG') {
+          targetPrefixes.push('FINAL YEAR', 'Department|FINAL YEAR');
+        }
+        const targetAudienceConditions: Prisma.NoticeWhereInput[] = [];
+        targetPrefixes.forEach((prefix) => {
+          targetAudienceConditions.push(
+            { targetAudience: { equals: prefix, mode: 'insensitive' } },
+            { targetAudience: { startsWith: `${prefix}|`, mode: 'insensitive' } }
+          );
+        });
+        if (where.OR) {
+          const existingOr = where.OR;
+          const existingAnd = where.AND
+            ? Array.isArray(where.AND)
+              ? where.AND
+              : [where.AND]
+            : [];
+          where.AND = [...existingAnd, { OR: existingOr }, { OR: targetAudienceConditions }];
+          delete where.OR;
+        } else {
+          where.OR = targetAudienceConditions;
+        }
+      } else {
+        where.targetAudience = { equals: params.targetAudience, mode: 'insensitive' };
+      }
+    }
+
     // Flags
     if (params.isImportant !== undefined) {
       where.isImportant = String(params.isImportant) === 'true';
@@ -220,7 +259,7 @@ export class NoticeService {
     };
   }
 
-  static async getNoticeById(id: string, userId?: string) {
+  static async getNoticeById(id: string, userId?: string, isAdmin: boolean = false) {
     if (!id || typeof id !== 'string') {
       return null;
     }
@@ -236,6 +275,10 @@ export class NoticeService {
       });
 
       if (!notice) {
+        return null;
+      }
+
+      if (!isAdmin && notice.status !== 'PUBLISHED') {
         return null;
       }
 

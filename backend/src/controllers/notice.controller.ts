@@ -26,7 +26,8 @@ export class NoticeController {
     try {
       const id = String(req.params.id);
       const userId = req.user?.id;
-      const result = await NoticeService.getNoticeById(id, userId);
+      const isAdmin = req.user?.role === 'ADMIN';
+      const result = await NoticeService.getNoticeById(id, userId, isAdmin);
       if (!result) {
         return ApiResponse.error(res, 'Notice not found', 404);
       }

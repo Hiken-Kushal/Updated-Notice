@@ -29,6 +29,7 @@ export interface ApiResponse<T = any> {
 export interface StudentNoticeParams {
   category?: string;
   departmentKey?: string;
+  targetAudience?: string;
   search?: string;
   page?: number;
   limit?: number;
@@ -125,6 +126,9 @@ export class StudentApiService {
     }
     if (params.departmentKey && params.departmentKey !== 'all') {
       query.append('departmentKey', params.departmentKey);
+    }
+    if (params.targetAudience && params.targetAudience !== 'all') {
+      query.append('targetAudience', params.targetAudience);
     }
     if (params.search) {
       query.append('search', params.search);

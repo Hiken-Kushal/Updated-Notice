@@ -6,9 +6,8 @@ import { bannerSchema } from '../validators';
 export class BannerController {
   static async getBanners(req: Request, res: Response, next: NextFunction) {
     try {
-      const activeOnly = req.query.activeOnly !== 'false';
       const category = req.query.category as string | undefined;
-      const banners = await BannerService.getBanners(activeOnly, category);
+      const banners = await BannerService.getPublicBanners(category);
       return ApiResponse.success(res, 'Banners retrieved successfully', banners);
     } catch (error) {
       next(error);
@@ -24,10 +23,23 @@ export class BannerController {
     }
   }
 
-  static async getBannerById(req: Request, res: Response, next: NextFunction) {
+  static async getAdminBannerById(req: Request, res: Response, next: NextFunction) {
     try {
       const id = String(req.params.id);
       const banner = await BannerService.getBannerById(id);
+      return ApiResponse.success(res, 'Banner retrieved for admin', banner);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getBannerById(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = String(req.params.id);
+      const banner = await BannerService.getPublicBannerById(id);
+      if (!banner) {
+        return ApiResponse.error(res, 'Banner not found', 404);
+      }
       return ApiResponse.success(res, 'Banner retrieved', banner);
     } catch (error) {
       next(error);

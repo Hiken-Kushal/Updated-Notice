@@ -31,6 +31,17 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
   const [authError, setAuthError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [showRequestForm, setShowRequestForm] = useState(false);
+  const [requestSubmitted, setRequestSubmitted] = useState(false);
+  const [requestData, setRequestData] = useState({
+    fullName: '',
+    email: '',
+    username: '',
+    password: '',
+    confirmPassword: '',
+  });
+  const [requestError, setRequestError] = useState('');
+  const [requestFieldError, setRequestFieldError] = useState('');
 
   const usernameInputRef = useRef<HTMLInputElement>(null);
   const passwordInputRef = useRef<HTMLInputElement>(null);
@@ -57,15 +68,61 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
     if (authError) setAuthError('');
   };
 
-  const fillDemoCredentials = () => {
-    setUsername('admin');
-    setPassword('Admin@123');
-    setUsernameError('');
-    setPasswordError('');
-    setAuthError('');
-    if (passwordInputRef.current) {
-      passwordInputRef.current.focus();
+  const handleRequestSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isLoading) return;
+
+    setRequestError('');
+    setRequestFieldError('');
+
+    let validationError = '';
+    if (!requestData.fullName.trim()) {
+      validationError = 'Full name is required.';
+    } else if (!requestData.email.trim()) {
+      validationError = 'Email address is required.';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(requestData.email.trim())) {
+      validationError = 'Enter a valid email address.';
+    } else if (requestData.username.trim().length < 3) {
+      validationError = 'Username must be at least 3 characters.';
+    } else if (requestData.password.length < 6) {
+      validationError = 'Password must be at least 6 characters.';
+    } else if (requestData.password !== requestData.confirmPassword) {
+      validationError = 'Passwords do not match.';
     }
+
+    if (validationError) {
+      setRequestFieldError(validationError);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await AdminApiService.registerAdminRequest({
+        fullName: requestData.fullName.trim(),
+        email: requestData.email.trim(),
+        username: requestData.username.trim(),
+        password: requestData.password,
+      });
+      setRequestSubmitted(true);
+    } catch (err: any) {
+      setRequestError(err.message || 'Unable to submit your request. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const openRequestForm = () => {
+    setShowRequestForm(true);
+    setRequestSubmitted(false);
+    setRequestError('');
+    setRequestFieldError('');
+  };
+
+  const backToLogin = () => {
+    setShowRequestForm(false);
+    setRequestSubmitted(false);
+    setRequestError('');
+    setRequestFieldError('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -231,15 +288,19 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
                   <span>Authorized Personnel</span>
                 </div>
                 <h2 className="text-xl sm:text-2xl font-bold text-[#1c1b1b] tracking-tight">
-                  Admin Portal
+                  {showRequestForm ? (requestSubmitted ? 'Request Submitted' : 'Request Admin Access') : 'Admin Portal'}
                 </h2>
                 <p className="text-xs sm:text-sm text-[#5c6470] mt-1">
-                  Sign in to continue to the administration portal.
+                  {showRequestForm
+                    ? requestSubmitted
+                      ? 'Your Admin access request is awaiting review.'
+                      : 'Request access to the ICEM Smart Notice Portal. Your request will be reviewed by the SuperAdmin.'
+                    : 'Sign in to continue to the administration portal.'}
                 </p>
               </div>
 
               {/* Authentication Error Alert */}
-              {authError && (
+              {!showRequestForm && authError && (
                 <div
                   role="alert"
                   className="mb-5 p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-xs flex items-start gap-2.5 animate-in fade-in duration-200"
@@ -252,7 +313,7 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
               )}
 
               {/* Success Notification */}
-              {isSuccess && (
+              {!showRequestForm && isSuccess && (
                 <div
                   role="status"
                   className="mb-5 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2.5 animate-in fade-in duration-200"
@@ -262,8 +323,124 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
                 </div>
               )}
 
+              {showRequestForm ? (
+                requestSubmitted ? (
+                  <div role="status" className="flex flex-col gap-4">
+                    <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-start gap-2.5 animate-in fade-in duration-200">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                      <div className="flex flex-col gap-1">
+                        <p className="font-semibold">Your Admin access request has been submitted successfully.</p>
+                        <p>Your request is currently pending SuperAdmin approval.</p>
+                        <p>You will be able to access the Admin Portal once your request is approved.</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={backToLogin}
+                      className="w-full mt-2 py-2.5 px-4 bg-[#003c84] hover:bg-[#00275a] active:bg-[#001d45] active:scale-[0.99] text-white font-semibold text-xs sm:text-sm rounded-lg shadow-xs hover:shadow transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      BACK TO LOGIN
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    {requestError && (
+                      <div role="alert" className="mb-5 p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-xs flex items-start gap-2.5 animate-in fade-in duration-200">
+                        <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
+                        <p className="font-semibold">{requestError}</p>
+                      </div>
+                    )}
+                    {requestFieldError && (
+                      <p role="alert" className="mb-4 text-[11px] text-red-600 font-medium">
+                        {requestFieldError}
+                      </p>
+                    )}
+                    <form onSubmit={handleRequestSubmit} autoComplete="on" noValidate className="flex flex-col gap-4">
+                      <div>
+                        <label htmlFor="admin-request-full-name" className="block text-xs font-semibold text-[#1c1b1b] mb-1.5">Full Name</label>
+                        <input
+                          id="admin-request-full-name"
+                          type="text"
+                          value={requestData.fullName}
+                          onChange={(e) => setRequestData((prev) => ({ ...prev, fullName: e.target.value }))}
+                          disabled={isLoading}
+                          autoComplete="name"
+                          required
+                          className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-white border border-[#e2e6ec] rounded-lg text-[#1c1b1b] placeholder:text-[#737782] focus:outline-none focus:border-[#003c84] focus:ring-2 focus:ring-[#003c84]/15 transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="admin-request-email" className="block text-xs font-semibold text-[#1c1b1b] mb-1.5">Email Address</label>
+                        <input
+                          id="admin-request-email"
+                          type="email"
+                          value={requestData.email}
+                          onChange={(e) => setRequestData((prev) => ({ ...prev, email: e.target.value }))}
+                          disabled={isLoading}
+                          autoComplete="email"
+                          required
+                          className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-white border border-[#e2e6ec] rounded-lg text-[#1c1b1b] placeholder:text-[#737782] focus:outline-none focus:border-[#003c84] focus:ring-2 focus:ring-[#003c84]/15 transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="admin-request-username" className="block text-xs font-semibold text-[#1c1b1b] mb-1.5">Username</label>
+                        <input
+                          id="admin-request-username"
+                          type="text"
+                          value={requestData.username}
+                          onChange={(e) => setRequestData((prev) => ({ ...prev, username: e.target.value }))}
+                          disabled={isLoading}
+                          autoComplete="username"
+                          required
+                          className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-white border border-[#e2e6ec] rounded-lg text-[#1c1b1b] placeholder:text-[#737782] focus:outline-none focus:border-[#003c84] focus:ring-2 focus:ring-[#003c84]/15 transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="admin-request-password" className="block text-xs font-semibold text-[#1c1b1b] mb-1.5">Password</label>
+                        <input
+                          id="admin-request-password"
+                          type="password"
+                          value={requestData.password}
+                          onChange={(e) => setRequestData((prev) => ({ ...prev, password: e.target.value }))}
+                          disabled={isLoading}
+                          autoComplete="new-password"
+                          required
+                          className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-white border border-[#e2e6ec] rounded-lg text-[#1c1b1b] placeholder:text-[#737782] focus:outline-none focus:border-[#003c84] focus:ring-2 focus:ring-[#003c84]/15 transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="admin-request-confirm-password" className="block text-xs font-semibold text-[#1c1b1b] mb-1.5">Confirm Password</label>
+                        <input
+                          id="admin-request-confirm-password"
+                          type="password"
+                          value={requestData.confirmPassword}
+                          onChange={(e) => setRequestData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                          disabled={isLoading}
+                          autoComplete="new-password"
+                          required
+                          className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-white border border-[#e2e6ec] rounded-lg text-[#1c1b1b] placeholder:text-[#737782] focus:outline-none focus:border-[#003c84] focus:ring-2 focus:ring-[#003c84]/15 transition-all"
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={isLoading}
+                        className="w-full mt-2 py-2.5 px-4 bg-[#003c84] hover:bg-[#00275a] active:bg-[#001d45] active:scale-[0.99] text-white font-semibold text-xs sm:text-sm rounded-lg shadow-xs hover:shadow transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
+                      >
+                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <span>SUBMIT REQUEST</span>}
+                      </button>
+                    </form>
+                    <div className="mt-6 pt-4 border-t border-[#e2e6ec] text-center text-[11px] text-[#5c6470]">
+                      Already have an account?{' '}
+                      <button type="button" onClick={backToLogin} className="text-[#003c84] hover:text-[#00275a] font-semibold hover:underline cursor-pointer">
+                        Back to Login
+                      </button>
+                    </div>
+                  </>
+                )
+              ) : (
+              <>
               {/* Clean Admin Login Form (ONLY Username, Password, Login) */}
-              <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+              <form onSubmit={handleSubmit} autoComplete="on" noValidate className="flex flex-col gap-4">
                 {/* Username Input Field */}
                 <div>
                   <label
@@ -368,19 +545,14 @@ export const AdminLoginView: React.FC<AdminLoginViewProps> = ({
                 </button>
               </form>
 
-              {/* Quick Demo Helper for review */}
-              <div className="mt-6 pt-4 border-t border-[#e2e6ec] flex items-center justify-between text-[11px] text-[#5c6470]">
-                <span>
-                  Demo: <strong className="text-[#00275a]">admin</strong> / <strong className="text-[#00275a]">Admin@123</strong>
-                </span>
-                <button
-                  type="button"
-                  onClick={fillDemoCredentials}
-                  className="text-[#003c84] hover:text-[#00275a] font-semibold hover:underline cursor-pointer"
-                >
-                  Auto-fill
+              <div className="mt-4 text-center text-[11px] text-[#5c6470]">
+                Need Admin access?{' '}
+                <button type="button" onClick={openRequestForm} className="text-[#003c84] hover:text-[#00275a] font-semibold hover:underline cursor-pointer">
+                  Request Admin Access
                 </button>
               </div>
+              </>
+              )}
             </div>
           </div>
 

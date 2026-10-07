@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { NoticeFilterBar } from '../components/notices/NoticeFilterBar';
 import { NoticeFeedTable } from '../components/dashboard/NoticeFeedTable';
+import { normalizeDateToKey } from '../components/notices/NoticeDateFilter';
 import { matchesNavCategory } from '../types/notice';
 import type { Notice } from '../types/notice';
 
@@ -21,6 +22,7 @@ export const NoticesView: React.FC<NoticesViewProps> = ({
   const [selectedSubCategory, setSelectedSubCategory] = useState<string>('all');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
   const [showOnlyImportant, setShowOnlyImportant] = useState<boolean>(false);
+  const [selectedDate, setSelectedDate] = useState<string | undefined>(undefined);
 
   // Dynamic header titles based on active category
   const getHeaderInfo = () => {
@@ -71,9 +73,21 @@ export const NoticesView: React.FC<NoticesViewProps> = ({
     return notices.filter((n) => matchesNavCategory(n.category, selectedCategory));
   }, [notices, selectedCategory]);
 
+  // Available dates for date picker
+  const availableDates = useMemo(() => {
+    return notices.map((n) => n.date).filter(Boolean);
+  }, [notices]);
+
   // Filter computation
   const filteredNotices = useMemo(() => {
     return categoryBaseNotices.filter((notice) => {
+      // Date filter
+      if (selectedDate) {
+        if (normalizeDateToKey(notice.date) !== selectedDate) {
+          return false;
+        }
+      }
+
       // Sub-category filter (for All Notices or General Notices)
       if (selectedSubCategory !== 'all') {
         if (selectedSubCategory === 'Administrative') {
@@ -110,13 +124,14 @@ export const NoticesView: React.FC<NoticesViewProps> = ({
 
       return true;
     });
-  }, [categoryBaseNotices, selectedSubCategory, searchTerm, selectedDepartment, showOnlyImportant]);
+  }, [categoryBaseNotices, selectedDate, selectedSubCategory, searchTerm, selectedDepartment, showOnlyImportant]);
 
   const handleResetFilters = () => {
     setSearchTerm('');
     setSelectedSubCategory('all');
     setSelectedDepartment('all');
     setShowOnlyImportant(false);
+    setSelectedDate(undefined);
   };
 
   return (
@@ -151,6 +166,9 @@ export const NoticesView: React.FC<NoticesViewProps> = ({
         onToggleImportant={() => setShowOnlyImportant(!showOnlyImportant)}
         onResetFilters={handleResetFilters}
         totalCount={filteredNotices.length}
+        selectedDate={selectedDate}
+        onSelectDate={setSelectedDate}
+        availableDates={availableDates}
       />
 
       {/* Master Notice Feed Table */}

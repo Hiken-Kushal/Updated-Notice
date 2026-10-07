@@ -1,9 +1,13 @@
 import React from 'react';
+import type { AdminUser } from '../services/adminApi';
 
 interface AdminSidebarProps {
   currentTab?: string;
   selectedCategory?: string;
+  currentUser: AdminUser | null;
+  isUserLoading: boolean;
   onNavigateTab?: (tab: string, category?: string) => void;
+  isSuperAdmin?: boolean;
   isOpen: boolean;
   onClose: () => void;
   onSwitchToStudentPortal?: () => void;
@@ -13,12 +17,29 @@ interface AdminSidebarProps {
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   currentTab = 'dashboard',
   selectedCategory = 'all',
+  currentUser,
+  isUserLoading,
   onNavigateTab,
+  isSuperAdmin = false,
   isOpen,
   onClose,
   onSwitchToStudentPortal,
   onLogout,
 }) => {
+  const displayName = isUserLoading
+    ? 'Loading user...'
+    : currentUser?.fullName?.trim() || currentUser?.username?.trim() || 'User';
+  const roleLabel = isUserLoading ? ' ' : currentUser?.role || '';
+  const initials = isUserLoading
+    ? '...'
+    : displayName
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0])
+        .join('')
+        .toUpperCase() || 'U';
+
   const navItems = [
     { id: 'all', label: 'All Notices', icon: 'dashboard' },
     { id: 'Academics', label: 'Academics', icon: 'school' },
@@ -115,6 +136,32 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
               );
             })}
           </nav>
+          {isSuperAdmin && (
+            <div className="px-2 pb-3">
+              <div className="px-2 pb-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#5c6470]">
+                  SuperAdmin
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  onNavigateTab?.('account-requests');
+                  onClose();
+                }}
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded transition-all text-left cursor-pointer ${
+                  currentTab === 'account-requests'
+                    ? 'bg-[#d8e2ff] text-[#001a41] font-semibold shadow-xs'
+                    : 'text-[#434751] hover:bg-[#eae7e7]/60 hover:text-[#1c1b1b]'
+                }`}
+              >
+                <span className={`material-symbols-outlined text-[20px] ${currentTab === 'account-requests' ? 'text-[#00275a]' : 'text-[#737782]'}`}>
+                  manage_accounts
+                </span>
+                <span className="text-sm font-medium">Account Requests</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Bottom Area: Clean Admin Profile */}
@@ -123,13 +170,13 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
           <div className="w-full flex items-center justify-between p-2 rounded-lg bg-[#f8fafc] border border-[#e2e6ec]/60">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-full bg-[#003c84] text-white flex items-center justify-center font-bold text-xs shrink-0 ring-1 ring-[#e2e6ec]">
-                CA
+                {initials}
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-xs font-bold text-[#1c1b1b] leading-tight truncate">
-                  College Admin
+                  {displayName}
                 </span>
-                <span className="text-[10px] text-[#5c6470] truncate">ICEM Administration</span>
+                <span className="text-[10px] text-[#5c6470] truncate">{roleLabel}</span>
               </div>
             </div>
             <div className="flex items-center gap-1">

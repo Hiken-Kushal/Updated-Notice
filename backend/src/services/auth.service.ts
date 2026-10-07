@@ -13,6 +13,11 @@ export class AuthService {
     department?: string;
     academicYear?: string;
   }) {
+    const role = data.role || 'STUDENT';
+    if (role === 'SUPERADMIN') {
+      throw new Error('SuperAdmin accounts cannot be created through registration');
+    }
+
     const existing = await prisma.user.findFirst({
       where: {
         OR: [{ username: data.username }, { email: data.email }],
@@ -28,13 +33,18 @@ export class AuthService {
 
     const passwordHash = await hashPassword(data.password);
 
+    // FACULTY and ADMIN accounts require approval; STUDENT accounts are approved immediately.
+    const requiresApproval = role === 'FACULTY' || role === 'ADMIN';
+    const accountStatus = requiresApproval ? 'PENDING' : 'APPROVED';
+
     const user = await prisma.user.create({
       data: {
         username: data.username,
         email: data.email,
         passwordHash,
         fullName: data.fullName,
-        role: data.role || 'STUDENT',
+        role,
+        status: accountStatus,
         department: data.department || null,
         academicYear: data.academicYear || null,
       },
@@ -44,6 +54,7 @@ export class AuthService {
         email: true,
         fullName: true,
         role: true,
+        status: true,
         department: true,
         academicYear: true,
         createdAt: true,
@@ -67,6 +78,14 @@ export class AuthService {
     const isValid = await comparePassword(plainPass, user.passwordHash);
     if (!isValid) {
       throw new Error('Invalid username or password');
+    }
+
+    // Check account status for FACULTY and ADMIN (PENDING/REJECTED accounts cannot log in)
+    if (user.status === 'PENDING') {
+      throw new Error('Your account is pending approval. Please wait for administrator review.');
+    }
+    if (user.status === 'REJECTED') {
+      throw new Error('Your account registration has been rejected. Please contact the administrator.');
     }
 
     const payload: TokenPayload = {
@@ -123,6 +142,11 @@ export class AuthService {
       if (stored) {
         await prisma.refreshToken.delete({ where: { id: stored.id } });
       }
+      throw new Error('Refresh token is invalid or expired. Please log in again.');
+    }
+
+    if (stored.user.status !== 'APPROVED') {
+      await prisma.refreshToken.delete({ where: { id: stored.id } });
       throw new Error('Refresh token is invalid or expired. Please log in again.');
     }
 

@@ -18,8 +18,8 @@ router.get('/calendar', NoticeController.getCalendar);
 router.get('/:id', optionalAuth, NoticeController.getNoticeById);
 
 // Student notice interactions
-router.post('/:id/acknowledge', optionalAuth, StudentController.toggleAcknowledge);
-router.post('/:id/bookmark', optionalAuth, StudentController.toggleBookmark);
+router.post('/:id/acknowledge', authenticate, requireRole(['STUDENT']), StudentController.toggleAcknowledge);
+router.post('/:id/bookmark', authenticate, requireRole(['STUDENT']), StudentController.toggleBookmark);
 
 // Admin-only management routes
 router.post('/', authenticate, requireRole(['ADMIN']), NoticeController.createNotice);

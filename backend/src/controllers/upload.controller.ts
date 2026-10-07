@@ -4,6 +4,8 @@ import { supabase } from '../config/supabase';
 import { env } from '../config/env';
 import { prisma } from '../config/prisma';
 import { verifyAccessToken } from '../utils/jwt';
+import { loadApprovedCurrentUser } from '../middlewares/auth.middleware';
+import { TokenPayload } from '../types';
 import path from 'path';
 import crypto from 'crypto';
 
@@ -156,10 +158,17 @@ export class UploadController {
       if (!user) {
         const queryToken = req.query.token as string;
         if (queryToken) {
+          let decoded: TokenPayload | null = null;
           try {
-            user = verifyAccessToken(queryToken);
+            decoded = verifyAccessToken(queryToken);
           } catch {
             // Invalid query token; ignore and continue as guest
+          }
+          if (decoded) {
+            user = await loadApprovedCurrentUser(decoded);
+            if (!user) {
+              return ApiResponse.error(res, 'Authentication token is invalid or no longer active', 401);
+            }
           }
         }
       }

@@ -1,13 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { RotateCw, CheckCircle2, Search, X } from 'lucide-react';
 import { NoticeFeedTable } from '../components/dashboard/NoticeFeedTable';
-import { NoticeCalendar } from '../components/dashboard/NoticeCalendar';
+import { NoticeDateFilter, normalizeDateToKey } from '../components/notices/NoticeDateFilter';
 import { matchesNavCategory } from '../types/notice';
 import type { Notice } from '../types/notice';
+import { formatDepartmentTargetAudience } from '../../../shared/targetAudiences';
 
 interface DashboardViewProps {
   notices: Notice[];
   selectedCategory?: string;
+  selectedTargetAudience?: string;
   onSelectNotice: (id: string) => void;
   onNavigateView: (view: string) => void;
   onRefreshData: () => void;
@@ -18,6 +20,7 @@ interface DashboardViewProps {
 export const DashboardView: React.FC<DashboardViewProps> = ({
   notices,
   selectedCategory = 'all',
+  selectedTargetAudience = '',
   onSelectNotice,
   onNavigateView,
   onRefreshData,
@@ -26,6 +29,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshToast, setRefreshToast] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | undefined>(undefined);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -43,11 +47,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return notices.filter((n) => matchesNavCategory(n.category, selectedCategory));
   }, [notices, selectedCategory]);
 
-  // 2. Filter notices if global search term is provided
+  // 2. Filter notices by date if selected
+  const dateFilteredNotices = useMemo(() => {
+    if (!selectedDate) return categoryFilteredNotices;
+    return categoryFilteredNotices.filter((n) => normalizeDateToKey(n.date) === selectedDate);
+  }, [categoryFilteredNotices, selectedDate]);
+
+  // 3. Filter notices if global search term is provided
   const displayNotices = useMemo(() => {
-    if (!searchTerm.trim()) return categoryFilteredNotices;
+    if (!searchTerm.trim()) return dateFilteredNotices;
     const query = searchTerm.toLowerCase();
-    return categoryFilteredNotices.filter((n) => {
+    return dateFilteredNotices.filter((n) => {
       return (
         n.title.toLowerCase().includes(query) ||
         n.summary?.toLowerCase().includes(query) ||
@@ -56,10 +66,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         n.issuedBy.toLowerCase().includes(query)
       );
     });
-  }, [categoryFilteredNotices, searchTerm]);
+  }, [dateFilteredNotices, searchTerm]);
+
+  // Available notice dates for the calendar date picker
+  const availableDates = useMemo(() => {
+    return notices.map((n) => n.date).filter(Boolean);
+  }, [notices]);
 
   // Dynamic header titles based on active category
   const getHeaderInfo = () => {
+    if (selectedTargetAudience) {
+      return {
+        title: formatDepartmentTargetAudience(selectedTargetAudience),
+        subtitle: 'Notices targeted to this department audience.',
+      };
+    }
+
     switch (selectedCategory) {
       case 'exam':
         return {
@@ -105,6 +127,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          <NoticeDateFilter
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+            availableDates={availableDates}
+          />
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
@@ -116,6 +143,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Date Filter Status indicator when date is active */}
+      {selectedDate && (
+        <div className="mx-3.5 sm:mx-6 mt-3 bg-blue-50 border border-blue-200 text-[#00275a] text-xs px-3 sm:px-3.5 py-2 rounded-sm flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="truncate">
+              Filtered by Date: <strong className="text-[#00275a]">{selectedDate}</strong> ({displayNotices.length} notices found)
+            </span>
+          </div>
+          <button
+            onClick={() => setSelectedDate(undefined)}
+            className="text-xs text-[#003c84] hover:underline font-semibold flex items-center gap-1 cursor-pointer shrink-0"
+          >
+            <X className="w-3.5 h-3.5" /> <span>Clear date filter</span>
+          </button>
+        </div>
+      )}
 
       {/* Search status indicator when search is active */}
       {searchTerm && (
@@ -145,25 +189,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       )}
 
-      {/* Main Content Grid: 12-column layout */}
-      <div className="p-3 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-start">
-        {/* Left Column: Notices (7 columns on desktop) */}
-        <div className="lg:col-span-7 xl:col-span-7 flex flex-col gap-5 min-w-0">
-          {/* Structured Notice Feed List */}
-          <NoticeFeedTable
-            notices={displayNotices}
-            onSelectNotice={onSelectNotice}
-            onViewAllNotices={selectedCategory === 'all' ? () => onNavigateView('notices') : undefined}
-          />
-        </div>
-
-        {/* Right Column: Google Calendar-style Notice Calendar (5 columns on desktop) */}
-        <div className="lg:col-span-5 xl:col-span-5 flex flex-col gap-5 min-w-0">
-          <NoticeCalendar
-            notices={notices}
-            onSelectNotice={onSelectNotice}
-          />
-        </div>
+      {/* Main Content Area */}
+      <div className="p-3 sm:p-6 flex flex-col gap-5">
+        <NoticeFeedTable
+          notices={displayNotices}
+          onSelectNotice={onSelectNotice}
+          onViewAllNotices={selectedCategory === 'all' ? () => onNavigateView('notices') : undefined}
+          showTargetAudience
+        />
       </div>
     </div>
   );

@@ -15,6 +15,7 @@ import {
   X
 } from 'lucide-react';
 import type { Notice } from '../../types/notice';
+import { parseDepartmentTargetAudience } from '../../../../shared/targetAudiences';
 
 export interface NoticeFeedTableProps {
   notices: Notice[];
@@ -24,6 +25,7 @@ export interface NoticeFeedTableProps {
   showCategoryFilters?: boolean;
   activeCategory?: string;
   limit?: number;
+  showTargetAudience?: boolean;
 }
 
 export const NoticeFeedTable: React.FC<NoticeFeedTableProps> = ({
@@ -33,6 +35,7 @@ export const NoticeFeedTable: React.FC<NoticeFeedTableProps> = ({
   showHeader = true,
   activeCategory = 'All',
   limit,
+  showTargetAudience = false,
 }) => {
   const [feedFilter, setFeedFilter] = useState<string>('');
 
@@ -128,8 +131,8 @@ export const NoticeFeedTable: React.FC<NoticeFeedTableProps> = ({
 
 
       {/* Level 3: Polished Notice List Table */}
-      <div className="bg-white border border-[#e2e6ec] rounded-lg overflow-hidden shadow-2xs flex flex-col">
-        <table className="w-full text-left border-collapse table-fixed">
+      <div className="bg-transparent flex flex-col">
+        <table className="w-full text-left border-separate border-spacing-y-1.5 table-fixed">
           <thead>
             <tr className="bg-[#f8fafc] border-b border-[#e2e6ec] text-[10px] sm:text-[11px] text-[#5c6470] uppercase tracking-wider font-semibold">
               <th className="py-2 sm:py-2.5 px-1.5 sm:px-3 w-9 sm:w-12 text-center">Type</th>
@@ -138,10 +141,10 @@ export const NoticeFeedTable: React.FC<NoticeFeedTableProps> = ({
               <th className="py-2 sm:py-2.5 px-2 sm:px-3 w-20 sm:w-28 text-right">Date</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#e2e6ec] text-xs">
+          <tbody className="text-xs">
             {displayNotices.length === 0 ? (
               <tr>
-                <td colSpan={4} className="py-10 px-4 text-center text-[#5c6470]">
+                <td colSpan={4} className="bg-white py-10 px-4 text-center text-[#5c6470] rounded-lg border border-[#e2e6ec]">
                   <p className="font-semibold text-sm text-[#1c1b1b] mb-1">No notices found</p>
                   <p className="text-xs">No circulars match the selected filter or search term.</p>
                 </td>
@@ -151,17 +154,23 @@ export const NoticeFeedTable: React.FC<NoticeFeedTableProps> = ({
                 <tr
                   key={notice.id}
                   onClick={() => onSelectNotice(notice.id)}
-                  className="hover:bg-[#f8fafc] transition-colors cursor-pointer group"
+                  className="transition-colors cursor-pointer group"
                 >
                   {/* Type Column */}
-                  <td className="py-2.5 sm:py-3 px-1.5 sm:px-3 text-center align-middle">
-                    <div className="w-6 h-6 sm:w-7 sm:h-7 rounded bg-[#f1f5f9] flex items-center justify-center mx-auto shrink-0">
+                  <td className={`py-2.5 sm:py-3 px-1.5 sm:px-3 text-center align-middle bg-white rounded-l-lg border-y border-l-4 ${
+                    notice.category.toLowerCase().includes('placement')
+                      ? 'border-l-[#ed8a36]'
+                      : notice.category.toLowerCase().includes('exam')
+                        ? 'border-l-[#9235a5]'
+                        : 'border-l-[#3b82c4]'
+                  } group-hover:bg-[#fbfdff]`}>
+                    <div className="w-6 h-6 sm:w-7 sm:h-7 rounded bg-[#edf4fb] flex items-center justify-center mx-auto shrink-0">
                       {getCategoryIcon(notice.category)}
                     </div>
                   </td>
 
                   {/* Subject Column: Clearly prominent bold title + secondary metadata */}
-                  <td className="py-2.5 sm:py-3 px-2 sm:px-3 align-middle">
+                  <td className="py-2.5 sm:py-3 px-2 sm:px-3 align-middle bg-white border-y border-[#e2e6ec] group-hover:bg-[#fbfdff]">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-bold text-[13px] sm:text-sm text-[#1c1b1b] group-hover:text-[#003c84] transition-colors leading-snug line-clamp-2 sm:line-clamp-1">
                         {notice.title}
@@ -190,15 +199,34 @@ export const NoticeFeedTable: React.FC<NoticeFeedTableProps> = ({
                         </>
                       )}
                     </div>
+                    {showTargetAudience && notice.targetAudience?.trim() && (() => {
+                      const target = parseDepartmentTargetAudience(notice.targetAudience);
+                      const audience = target?.academicTarget || notice.targetAudience;
+                      const branch = target?.program;
+                      return (
+                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] sm:text-[10.5px] text-[#5c6470] min-w-0">
+                          <span className="min-w-0 max-w-full truncate">
+                            <span className="font-medium text-[#737782]">Target Audience: </span>
+                            {audience}
+                          </span>
+                          {branch && (
+                            <span className="min-w-0 max-w-full truncate">
+                              <span className="font-medium text-[#737782]">Branch: </span>
+                              {branch}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </td>
 
                   {/* Department Column */}
-                  <td className="py-2.5 sm:py-3 px-3 hidden md:table-cell text-[#5c6470] font-medium truncate align-middle">
+                  <td className="py-2.5 sm:py-3 px-3 hidden md:table-cell text-[#5c6470] font-medium truncate align-middle bg-white border-y border-[#e2e6ec] group-hover:bg-[#fbfdff]">
                     {notice.department}
                   </td>
 
                   {/* Date Column */}
-                  <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-right text-[#5c6470] font-medium whitespace-nowrap align-middle">
+                  <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-right text-[#5c6470] font-medium whitespace-nowrap align-middle bg-white rounded-r-lg border-y border-r border-[#e2e6ec] group-hover:bg-[#fbfdff]">
                     <div className="flex items-center justify-end gap-0.5 sm:gap-1">
                       <span className="text-[10px] sm:text-[11px]">{notice.date.split(',')[0]}</span>
                       <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#737782] group-hover:text-[#003c84] group-hover:translate-x-0.5 transition-transform shrink-0" />

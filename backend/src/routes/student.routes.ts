@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { StudentController } from '../controllers/student.controller';
-import { authenticate, optionalAuth, requireRole } from '../middlewares/auth.middleware';
+import { authenticate, requireRole } from '../middlewares/auth.middleware';
 
 const router = Router();
 
@@ -10,7 +10,7 @@ router.get('/acknowledgements', authenticate, requireRole(['STUDENT']), StudentC
 
 // Toggles for notices (mounted under /api/v1/notices/:id/...)
 export const noticeStudentRouter = Router({ mergeParams: true });
-noticeStudentRouter.post('/acknowledge', optionalAuth, StudentController.toggleAcknowledge);
-noticeStudentRouter.post('/bookmark', optionalAuth, StudentController.toggleBookmark);
+noticeStudentRouter.post('/acknowledge', authenticate, requireRole(['STUDENT']), StudentController.toggleAcknowledge);
+noticeStudentRouter.post('/bookmark', authenticate, requireRole(['STUDENT']), StudentController.toggleBookmark);
 
 export default router;

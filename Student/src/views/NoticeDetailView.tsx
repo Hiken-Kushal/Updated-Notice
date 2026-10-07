@@ -240,26 +240,64 @@ export const NoticeDetailView: React.FC<NoticeDetailViewProps> = ({
                         {att.type === 'doc' && <FileText className="w-5 h-5 text-blue-600" />}
                       </div>
 
-                      <div className="flex-1 min-w-0 mr-2">
-                        <p className="text-xs font-semibold text-[#1c1b1b] truncate">{att.name}</p>
+                      <div
+                        onClick={() => {
+                          if (att.url) {
+                            const fullUrl = StudentApiService.resolveFileUrl(att.url);
+                            const isPreviewable = att.type === 'pdf' || att.type === 'image' || att.name.match(/\.(pdf|png|jpe?g|webp|svg|txt)$/i);
+                            if (isPreviewable) {
+                              window.open(fullUrl, '_blank', 'noopener,noreferrer');
+                            } else {
+                              const link = document.createElement('a');
+                              link.href = fullUrl;
+                              link.setAttribute('download', att.name);
+                              link.setAttribute('target', '_blank');
+                              link.setAttribute('rel', 'noopener noreferrer');
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                            }
+                          } else {
+                            setActiveAttachment(att);
+                          }
+                        }}
+                        className="flex-1 min-w-0 mr-2 cursor-pointer"
+                        title={att.type === 'pdf' || att.type === 'image' ? 'Open in new tab' : 'Download file'}
+                      >
+                        <p className="text-xs font-semibold text-[#1c1b1b] group-hover:text-[#003c84] transition-colors truncate">{att.name}</p>
                         <p className="text-[11px] text-[#5c6470]">{att.size}</p>
                       </div>
 
                       <div className="flex items-center gap-1">
                         <button
-                          onClick={() => setActiveAttachment(att)}
-                          className="w-8 h-8 flex items-center justify-center rounded text-[#003c84] hover:bg-[#003c84]/10 transition-colors"
-                          title="Preview Document"
+                          type="button"
+                          onClick={() => {
+                            if (att.url) {
+                              const fullUrl = StudentApiService.resolveFileUrl(att.url);
+                              const isPreviewable = att.type === 'pdf' || att.type === 'image' || att.name.match(/\.(pdf|png|jpe?g|webp|svg|txt)$/i);
+                              if (isPreviewable) {
+                                window.open(fullUrl, '_blank', 'noopener,noreferrer');
+                              } else {
+                                setActiveAttachment(att);
+                              }
+                            } else {
+                              setActiveAttachment(att);
+                            }
+                          }}
+                          className="w-8 h-8 flex items-center justify-center rounded text-[#003c84] hover:bg-[#003c84]/10 transition-colors cursor-pointer"
+                          title={att.type === 'pdf' || att.type === 'image' ? 'Open in new tab' : 'Preview Document'}
                         >
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
+                          type="button"
                           onClick={() => {
                             if (att.url) {
                               const link = document.createElement('a');
                               link.href = StudentApiService.resolveFileUrl(att.url);
                               link.setAttribute('download', att.name);
                               link.setAttribute('target', '_blank');
+                              link.setAttribute('rel', 'noopener noreferrer');
                               document.body.appendChild(link);
                               link.click();
                               document.body.removeChild(link);

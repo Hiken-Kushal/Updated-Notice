@@ -7,6 +7,7 @@ import documentRoutes from './document.routes';
 import timetableRoutes from './timetable.routes';
 import subscriptionRoutes from './subscription.routes';
 import uploadRoutes from './upload.routes';
+import userRoutes from './user.routes';
 
 const apiRouter = Router();
 
@@ -19,6 +20,7 @@ apiRouter.use('/documents', documentRoutes);
 apiRouter.use('/timetable', timetableRoutes);
 apiRouter.use('/subscriptions', subscriptionRoutes);
 apiRouter.use('/upload', uploadRoutes);
+apiRouter.use('/users', userRoutes);
 
 // Health check endpoint
 apiRouter.get('/health', (_req, res) => {

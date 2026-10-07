@@ -27,7 +27,7 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="fixed top-0 left-0 lg:left-72 right-0 h-14 bg-white/95 backdrop-blur-sm z-30 px-3 sm:px-4 flex items-center justify-between border-b border-[#e2e6ec] shadow-xs">
+    <header className="fixed top-0 left-0 lg:left-72 right-0 h-14 bg-[#f5f9fd]/95 backdrop-blur-sm z-30 px-3 sm:px-4 flex items-center justify-between border-b border-[#d7e4ef] shadow-xs">
       {/* Left: Mobile Menu Toggle & Search Bar */}
       <div className="flex items-center gap-2 sm:gap-3 flex-1 max-w-xl min-w-0">
         <button
@@ -39,7 +39,7 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
 
         <div className="relative flex-1 min-w-0">
-          <div className="relative flex items-center w-full bg-[#f5f7fa] rounded-sm px-2.5 py-1.5 border border-[#e2e6ec] focus-within:border-[#003c84] focus-within:bg-white transition-all">
+          <div className="relative flex items-center w-full bg-white rounded-sm px-2.5 py-1.5 border border-[#d7e4ef] focus-within:border-[#003c84] focus-within:bg-white transition-all shadow-2xs">
             <Search className="w-4 h-4 text-[#737782] shrink-0" />
             <input
               type="text"
@@ -72,7 +72,7 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Right: Institutional Label & Admin Portal Button */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {/* Institutional Portal Label */}
-        <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 bg-[#00275a]/5 border border-[#00275a]/10 rounded-sm text-xs font-semibold text-[#00275a]">
+        <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-100 rounded-sm text-xs font-semibold text-[#245b4a]">
           <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
           <span>ICEM Notice Portal</span>
         </div>
