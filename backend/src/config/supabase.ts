@@ -11,8 +11,12 @@ if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
 // IMPORTANT: This file is strictly for backend execution.
 // The service role key is NEVER sent or exposed to frontends.
 export const supabase: SupabaseClient = createClient(
-  env.SUPABASE_URL || 'https://placeholder.supabase.co',
-  env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-service-role-key',
+  env.NODE_ENV === 'production'
+    ? env.SUPABASE_URL
+    : env.SUPABASE_URL || 'https://placeholder.supabase.co',
+  env.NODE_ENV === 'production'
+    ? env.SUPABASE_SERVICE_ROLE_KEY
+    : env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-service-role-key',
   {
     auth: {
       persistSession: false,

@@ -20,7 +20,40 @@ export function resolveJwtSecrets(
   };
 }
 
+export function validateProductionConfig(
+  nodeEnv: string,
+  config: {
+    DATABASE_URL: string | undefined;
+    JWT_SECRET: string | undefined;
+    JWT_REFRESH_SECRET: string | undefined;
+    SUPABASE_URL: string | undefined;
+    SUPABASE_SERVICE_ROLE_KEY: string | undefined;
+    SUPABASE_STORAGE_BUCKET: string | undefined;
+  }
+): void {
+  if (nodeEnv.toLowerCase() !== 'production') {
+    return;
+  }
+
+  const missing = Object.entries(config)
+    .filter(([, value]) => !value?.trim())
+    .map(([name]) => name);
+
+  if (missing.length > 0) {
+    throw new Error(`Required production configuration is missing: ${missing.join(', ')}`);
+  }
+}
+
 const NODE_ENV = process.env.NODE_ENV || 'development';
+validateProductionConfig(NODE_ENV, {
+  DATABASE_URL: process.env.DATABASE_URL,
+  JWT_SECRET: process.env.JWT_SECRET,
+  JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET,
+  SUPABASE_URL: process.env.SUPABASE_URL,
+  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  SUPABASE_STORAGE_BUCKET: process.env.SUPABASE_STORAGE_BUCKET,
+});
+
 const jwtSecrets = resolveJwtSecrets(
   NODE_ENV,
   process.env.JWT_SECRET,
@@ -46,7 +79,10 @@ export const env = {
   SMTP_USER: process.env.SMTP_USER || '',
   SMTP_PASS: process.env.SMTP_PASS || '',
   EMAIL_FROM: process.env.EMAIL_FROM || '"ICEM Smart Notice Portal" <no-reply@icem.ac.in>',
-  SUPABASE_URL: process.env.SUPABASE_URL || 'https://xhxxcautdoyozbrejdsm.supabase.co',
+  SUPABASE_URL:
+    process.env.SUPABASE_URL ||
+    (NODE_ENV === 'production' ? '' : 'https://xhxxcautdoyozbrejdsm.supabase.co'),
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  SUPABASE_STORAGE_BUCKET: process.env.SUPABASE_STORAGE_BUCKET || 'notice-attachments',
+  SUPABASE_STORAGE_BUCKET:
+    process.env.SUPABASE_STORAGE_BUCKET || (NODE_ENV === 'production' ? '' : 'notice-attachments'),
 };
